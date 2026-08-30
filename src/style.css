@@ -99,3 +99,53 @@ hr{border-color:var(--border);margin:1rem 0;}
 .toast.success{border-color:var(--green-ok);}
 .toast.error{border-color:var(--red-err);}
 @keyframes toast-in{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}
+
+/* ===== 桌面（默认）卡片宽度 ===== */
+.card{min-width:0;}
+.card-wide{min-width:420px;}
+
+/* ===== 小屏兼容 ===== */
+/* 平板 / 窄桌面 */
+@media (max-width:1000px){
+  .cards-grid{gap:1.2rem;}
+  .card,.card-wide{min-width:0;flex-basis:100%;}
+  .card{padding:1.2rem;}
+  .transfer-container{gap:.8rem;}
+  .transfer-list{min-height:220px;max-height:240px;}
+}
+/* 手机 / 竖屏 */
+@media (max-width:760px){
+  body{padding:1rem .75rem;}
+  .header{flex-direction:column;gap:.5rem;text-align:center;}
+  .header h1{font-size:1.35rem;}
+  .card{border-radius:1.4rem;padding:1rem;}
+  .card-title{font-size:1.1rem;}
+  /* 穿梭框改竖排：面板占满宽度，按钮横向居中 */
+  .transfer-container{flex-direction:column;}
+  .transfer-panel{flex:1 1 100%;}
+  .transfer-list{min-height:200px;max-height:260px;}
+  .transfer-buttons{flex-direction:row;justify-content:center;gap:10px;}
+  .transfer-buttons button{padding:8px 16px;font-size:.85rem;}
+  /* 文件库动作按钮换行 */
+  .flex-row button{margin-top:4px;}
+  /* 编辑器模态框 */
+  .modal-content-editor,.editor-modal .modal-content-editor{width:96%;padding:1rem;max-height:94%;}
+  .editor-pane textarea{height:220px;}
+  .canvas-preview-area{flex-direction:column;align-items:center;}
+  .canvas-preview-area canvas{max-height:220px;}
+  input[type="range"]{flex:1;width:100%;min-width:120px;}
+  .edit-control-group{flex-wrap:wrap;}
+}
+/* 超小屏手机 */
+@media (max-width:480px){
+  .header h1{font-size:1.15rem;}
+  .file-label{font-size:.72rem;padding:.35rem .7rem;}
+  .key-box{font-size:.6rem;}
+  .btn{font-size:.85rem;}
+  .editor-tabs .tab-btn{padding:5px 12px;font-size:.8rem;}
+  .canvas-preview-area canvas{max-height:180px;}
+  .file-card{width:104px;}
+  .file-card img,.file-card video{height:80px;}
+  .toast-container{left:12px;right:12px;max-width:none;top:12px;}
+}
+

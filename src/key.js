@@ -3,7 +3,7 @@
 // ============================================================================
 import {
   generateRandomKey, exportKeyB64, importKeyFromB64, deriveKeyFromPassword,
-  sha256, concatBuffers, arrBufToBase64,
+  deriveKeyFromPasswordIter, sha256, concatBuffers, arrBufToBase64,
 } from './crypto.js';
 
 const STORE_PREFIX = 'wbwencrypt:key:';
@@ -62,6 +62,47 @@ export function getAllStoredHashes() {
   } catch (e) { return []; }
 }
 
+// 记忆面板：返回带摘要信息的记录列表（不暴露完整密钥）
+export function listStoredRecords() {
+  const hashes = getAllStoredHashes();
+  const records = [];
+  for (const h of hashes) {
+    const rec = getKeyForHash(h);
+    if (!rec) continue;
+    records.push({ hashHex: h, type: rec.type, shortHash: h.slice(0, 16) });
+  }
+  return records;
+}
+
+export function clearAllKeys() {
+  for (const h of getAllStoredHashes()) clearKeyForHash(h);
+  try { lsDel(META_PREFIX + 'list'); } catch (e) {}
+}
+
+// ============================================================================
+// 解密历史（功能4）：记住最近一次成功解密的凭据，便于再次解密
+// 默认不存储密码模式的原始密码（仅存密钥模式 keyB64），避免明文密码落盘
+// ============================================================================
+const LAST_DECRYPT_KEY = 'wbwencrypt:decrypt:last';
+
+export function rememberDecryptSuccess(credential) {
+  // credential: { type:'key', keyB64 } | { type:'password', inputStr }
+  if (credential.type === 'password') return; // 不存明文密码
+  lsSet(LAST_DECRYPT_KEY, JSON.stringify(credential));
+}
+
+export function getRememberedDecrypt() {
+  try {
+    const raw = lsGet(LAST_DECRYPT_KEY);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (obj && obj.type === 'key' && obj.keyB64) return obj;
+    return null;
+  } catch (e) { return null; }
+}
+
+export function clearRememberedDecrypt() { lsDel(LAST_DECRYPT_KEY); }
+
 // ============================================================================
 // 加密端：获取密钥
 // ----------------------------------------------------------------------------
@@ -94,7 +135,6 @@ export function makeKeyResolver(usePassword, inputStr) {
       if (!inputStr) throw new Error('请输入密码');
       if (!head.salt) throw new Error('该密文不是密码派生格式');
       // 需要支持指定迭代次数（从头部读取）
-      const { deriveKeyFromPasswordIter } = await import('./crypto.js');
       return await deriveKeyFromPasswordIter(inputStr, head.salt, head.iterations);
     }
     if (!inputStr) throw new Error('请输入密钥(Base64)');

@@ -13,7 +13,7 @@
     </div>
     <div class="cards-grid">
         <!-- 左侧：穿梭框管理 -->
-        <div class="card" style="min-width:420px;">
+        <div class="card card-wide">
             <div class="card-title">📚 文件库 & 待加密列表</div>
             <div class="file-area" id="dropZone">
                 <div class="flex-row">
@@ -24,7 +24,7 @@
                 </div>
                 <div id="dropHint" class="small-note" style="display:none;">松开即可添加文件</div>
                 <div class="transfer-container">
-                    <div class="transfer-panel"><h4>📋 图片库 <span id="leftCount">0</span></h4><div id="leftList" class="transfer-list"></div></div>
+                    <div class="transfer-panel"><h4>📋 文件库 <span id="leftCount">0</span></h4><div id="leftList" class="transfer-list"></div></div>
                     <div class="transfer-buttons"><button id="toRightBtn">→</button><button id="toLeftBtn">←</button><button id="toAllRightBtn">⇉</button></div>
                     <div class="transfer-panel"><h4>✅ 待加密列表 <span id="rightCount">0</span></h4><div id="rightList" class="transfer-list"></div></div>
                 </div>
@@ -45,7 +45,15 @@
                     </div>
                     <div class="small-note">若使用密码派生，会从密码生成256位密钥；否则直接使用Base64密钥或随机生成。</div>
                 </div>
+                <div class="flex-row" style="margin-top:10px; justify-content:space-between;">
+                    <button id="exportConfigBtn" class="btn-outline btn-sm">📤 导出配置</button>
+                    <button id="importConfigBtn" class="btn-outline btn-sm">📥 导入配置</button>
+                    <input type="file" id="importConfigFile" accept=".json,application/json">
+                </div>
                 <button id="transferEncryptBtn" class="btn">🔒 加密右侧列表 (批量/单文件)</button>
+                <div class="flex-row" style="margin-top:8px; justify-content:center;">
+                    <label style="font-size:0.75rem; color:var(--text-sec);"><input type="checkbox" id="clearAfterEncrypt"> 加密完成后清空待加密列表</label>
+                </div>
                 <div id="encryptProgress" class="small-note" style="display:none;"></div>
             </div>
             <div id="encryptResultUnified" style="display:none; margin-top:1rem; padding:0.8rem; background:var(--card-bg); border-radius:1rem;">
@@ -69,9 +77,17 @@
                 <div id="verifyMessage" style="margin-top:6px;"></div>
                 <div id="decryptPreviewArea" style="display:none; margin-top:10px; max-height:400px; overflow-y:auto;"></div>
             </div>
+
+            <hr>
+            <div class="card-title" style="margin-top:0;">🗝️ 记忆密钥管理</div>
+            <div class="file-area">
+                <div class="small-note" style="text-align:left; margin-bottom:6px;">按文件内容哈希保存在本机，加密同一文件时自动复用。</div>
+                <div id="memKeyList" style="font-size:0.7rem; max-height:140px; overflow-y:auto; display:flex; flex-direction:column; gap:4px;"></div>
+                <button id="clearMemKeysBtn" class="btn-outline btn-sm" style="width:100%; margin-top:8px;">🗑️ 清空全部记忆密钥</button>
+            </div>
         </div>
     </div>
-    <footer>🔐 AES-GCM 256 | Deflate压缩 | SHA-256 | 多文件批量解密预览/下载 | 图片编辑 | 深色主题</footer>
+    <footer>🔐 AES-GCM 256 | Deflate压缩 | SHA-256 | 分片加密 | 多文件批量解密预览/下载 | 图片编辑 | Dark+ 主题</footer>
 </div>
 
 <!-- 图片放大模态框 -->
@@ -92,14 +108,14 @@
             <textarea id="modalHtmlContent" placeholder="输入HTML代码..."></textarea>
             <div class="flex-row" style="margin-top:8px; justify-content:space-between;">
                 <button id="modalPreviewHtmlBtn" class="btn-sm">👁️ 预览</button>
-                <button id="modalAddHtmlToLibBtn" class="btn-sm">📥 添加到图片库</button>
+                    <button id="modalAddHtmlToLibBtn" class="btn-sm">📥 添加到文件库</button>
             </div>
         </div>
         <div id="modalTxtPane" class="editor-pane" style="display:none;">
             <textarea id="modalTxtContent" placeholder="输入纯文本..."></textarea>
             <div class="flex-row" style="margin-top:8px; justify-content:space-between;">
                 <button id="modalPreviewTxtBtn" class="btn-sm">👁️ 预览</button>
-                <button id="modalAddTxtToLibBtn" class="btn-sm">📥 添加到图片库</button>
+                    <button id="modalAddTxtToLibBtn" class="btn-sm">📥 添加到文件库</button>
             </div>
         </div>
         <div id="modalEditorPreview" class="preview-pane" style="display:none;"></div>

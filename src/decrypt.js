@@ -3,7 +3,7 @@
 // ============================================================================
 import { $, toast, hideProgress, setProgress, openImageModal, openVideoModal } from './ui.js';
 import { decryptEncodedBytes, decompress, sha256, splitPayload, uint8FromBuffer, importKeyFromB64, deriveKeyFromPasswordIter } from './crypto.js';
-import { makeKeyResolver } from './key.js';
+import { makeKeyResolver, rememberDecryptSuccess, getRememberedDecrypt } from './key.js';
 import { addFileToLeft } from './library.js';
 
 // ---- 批量载荷解析（继承旧版"多重"格式） ----
@@ -196,6 +196,8 @@ export function initDecrypt() {
     btn.disabled = true; buttonText(btn, '⏳ 解密中...');
     try {
       const r = await decryptOne({ file: decryptFile.files[0], usePassword, inputStr });
+      // 功能4：记忆成功解密的密钥凭据（仅密钥模式，密码模式不落盘）
+      if (!usePassword) rememberDecryptSuccess({ type: 'key', keyB64: inputStr });
       badge.innerText = r.badge; badge.className = 'status-badge ' + r.cls;
       verifyMsg.innerHTML = `<span>${r.msg}</span>`;
       preview.style.display = 'block';
@@ -208,6 +210,16 @@ export function initDecrypt() {
       buttonText(btn, '🔎 解密并校验完整性');
     } finally { btn.disabled = false; }
   };
+
+  // 功能4：加载时若有历史密钥凭据，自动填入并提示
+  const remembered = getRememberedDecrypt();
+  if (remembered) {
+    const decKeyInput = $('decryptKeyInput');
+    if (!decKeyInput.value.trim()) {
+      decKeyInput.value = remembered.keyB64;
+      toast('已填入上次解密成功的密钥');
+    }
+  }
 }
 
 function buttonText(btn, text) { if (btn) btn.textContent = text; }
