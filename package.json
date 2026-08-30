@@ -1,0 +1,18 @@
+{
+  "name": "wbwencrypt",
+  "version": "2.0.0",
+  "description": "AES-GCM 文件加密箱 · Vite 模块化版（多文件下载/预览 + 深色专业主题）",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "vite": "^8.2.2"
+  },
+  "dependencies": {
+    "jszip": "^3.10.1"
+  }
+}

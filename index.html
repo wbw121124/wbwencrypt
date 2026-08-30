@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>AES-GCM 加密箱 | 多文件下载/预览 + 深色专业版</title>
+</head>
+<body>
+<div class="app-container">
+    <div class="header">
+        <h1>🛡️ AES-GCM 加密箱 · 多文件下载/预览</h1>
+        <span style="color:var(--text-sec);">🌙 深色专业版 v2</span>
+    </div>
+    <div class="cards-grid">
+        <!-- 左侧：穿梭框管理 -->
+        <div class="card" style="min-width:420px;">
+            <div class="card-title">📚 文件库 & 待加密列表</div>
+            <div class="file-area" id="dropZone">
+                <div class="flex-row">
+                    <label class="file-label" for="addFilesBtn">➕ 添加文件(图/视频/html/txt)</label>
+                    <input type="file" id="addFilesBtn" accept="image/*,video/*,.html,.txt,.htm,.text/plain" multiple>
+                    <button id="transferCameraBtn" class="btn-outline btn-sm">📸 拍照/录像</button>
+                    <button id="openEditorBtn" class="btn-outline btn-sm">✏️ 新建文本/HTML</button>
+                </div>
+                <div id="dropHint" class="small-note" style="display:none;">松开即可添加文件</div>
+                <div class="transfer-container">
+                    <div class="transfer-panel"><h4>📋 图片库 <span id="leftCount">0</span></h4><div id="leftList" class="transfer-list"></div></div>
+                    <div class="transfer-buttons"><button id="toRightBtn">→</button><button id="toLeftBtn">←</button><button id="toAllRightBtn">⇉</button></div>
+                    <div class="transfer-panel"><h4>✅ 待加密列表 <span id="rightCount">0</span></h4><div id="rightList" class="transfer-list"></div></div>
+                </div>
+                <div id="transferCameraContainer" style="display:none; margin-top:8px;"></div>
+            </div>
+        </div>
+
+        <!-- 右侧：加密设置 + 解密验证 -->
+        <div class="card">
+            <div class="card-title">🔒 加密设置</div>
+            <div class="file-area">
+                <div style="margin-bottom:12px;">
+                    <label style="font-weight:500;">🔑 自定义密钥（可选）</label>
+                    <input type="text" id="customKeyInput" placeholder="留空则自动生成随机密钥 | 或输入Base64密钥(32字节)" style="width:100%; margin-top:4px;">
+                    <div class="flex-row" style="margin-top:6px;">
+                        <label><input type="checkbox" id="usePasswordDerive"> 使用密码派生（PBKDF2）</label>
+                        <input type="text" id="passwordDeriveInput" placeholder="密码短语" style="flex:1;" disabled>
+                    </div>
+                    <div class="small-note">若使用密码派生，会从密码生成256位密钥；否则直接使用Base64密钥或随机生成。</div>
+                </div>
+                <button id="transferEncryptBtn" class="btn">🔒 加密右侧列表 (批量/单文件)</button>
+                <div id="encryptProgress" class="small-note" style="display:none;"></div>
+            </div>
+            <div id="encryptResultUnified" style="display:none; margin-top:1rem; padding:0.8rem; background:var(--card-bg); border-radius:1rem;">
+                <div><strong>✅ 加密完成</strong></div>
+                <div class="key-box"><span>🔑 使用密钥:</span><span id="usedKeyDisplay"></span><button id="copyUsedKeyBtn" class="btn-sm">复制</button></div>
+                <button id="downloadEncryptedBtn" class="btn-outline btn">⬇️ 下载加密文件</button>
+            </div>
+
+            <hr>
+            <div class="card-title" style="margin-top:0;">🔓 解密验证 · 多文件预览/下载</div>
+            <div class="file-area">
+                <label class="file-label" for="decryptFileInput">📁 上传加密文件</label>
+                <input type="file" id="decryptFileInput">
+                <div id="decryptFileName" class="small-note">未选择文件</div>
+                <input type="text" id="decryptKeyInput" placeholder="粘贴密钥(Base64) 或 密码(需勾选派生)" style="width:100%; margin-top:8px;">
+                <div class="flex-row"><label><input type="checkbox" id="decryptUsePassword"> 密码派生模式</label></div>
+                <button id="decryptBtn" class="btn" style="background: var(--secondary);">🔎 解密并校验完整性</button>
+            </div>
+            <div id="decryptStatus" style="margin-top:1rem;">
+                <div class="status-badge">等待解密</div>
+                <div id="verifyMessage" style="margin-top:6px;"></div>
+                <div id="decryptPreviewArea" style="display:none; margin-top:10px; max-height:400px; overflow-y:auto;"></div>
+            </div>
+        </div>
+    </div>
+    <footer>🔐 AES-GCM 256 | Deflate压缩 | SHA-256 | 多文件批量解密预览/下载 | 图片编辑 | 深色主题</footer>
+</div>
+
+<!-- 图片放大模态框 -->
+<div id="imageModal" class="modal"><span class="close-modal">&times;</span><img class="modal-content" id="modalImg"></div>
+
+<!-- 文本/HTML编辑器弹窗 -->
+<div id="editorModal" class="modal" style="background:rgba(0,0,0,0.85);">
+    <div class="modal-content-editor">
+        <div style="display:flex; justify-content:space-between; margin-bottom:1rem;">
+            <h3 style="margin:0;">✏️ 文件编辑器</h3>
+            <button id="closeEditorModalBtn" class="btn-sm">关闭</button>
+        </div>
+        <div class="editor-tabs">
+            <button id="modalEditHtmlTab" class="tab-btn active">✏️ HTML编辑</button>
+            <button id="modalEditTxtTab" class="tab-btn">📝 纯文本编辑</button>
+        </div>
+        <div id="modalHtmlPane" class="editor-pane">
+            <textarea id="modalHtmlContent" placeholder="输入HTML代码..."></textarea>
+            <div class="flex-row" style="margin-top:8px; justify-content:space-between;">
+                <button id="modalPreviewHtmlBtn" class="btn-sm">👁️ 预览</button>
+                <button id="modalAddHtmlToLibBtn" class="btn-sm">📥 添加到图片库</button>
+            </div>
+        </div>
+        <div id="modalTxtPane" class="editor-pane" style="display:none;">
+            <textarea id="modalTxtContent" placeholder="输入纯文本..."></textarea>
+            <div class="flex-row" style="margin-top:8px; justify-content:space-between;">
+                <button id="modalPreviewTxtBtn" class="btn-sm">👁️ 预览</button>
+                <button id="modalAddTxtToLibBtn" class="btn-sm">📥 添加到图片库</button>
+            </div>
+        </div>
+        <div id="modalEditorPreview" class="preview-pane" style="display:none;"></div>
+        <div id="inlineEditActions" style="display:none; margin-top:12px; gap:8px; justify-content:center;">
+            <button id="saveEditToFileBtn" class="btn-sm">💾 保存修改到原文件</button>
+            <button id="cancelEditBtn" class="btn-sm">取消</button>
+        </div>
+    </div>
+</div>
+
+<!-- 图片编辑弹窗 -->
+<div id="imageEditModal" class="modal" style="background:rgba(0,0,0,0.85);">
+    <div class="modal-content-editor" style="width:95%; max-width:1200px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:1rem;">
+            <h3 style="margin:0;">🎨 图片编辑器</h3>
+            <button id="closeImageEditBtn" class="btn-sm">关闭</button>
+        </div>
+        <div class="canvas-preview-area">
+            <div><strong>原图</strong><br><canvas id="originalCanvas" style="border:1px solid var(--border);"></canvas></div>
+            <div><strong>编辑后</strong><br><canvas id="editedCanvas" style="border:1px solid var(--border);"></canvas></div>
+        </div>
+        <div class="image-edit-panel">
+            <div class="edit-control-group"><label>线稿化</label><input type="range" id="sketchSlider" min="0" max="100" value="0" step="1"><span id="sketchVal">0</span></div>
+            <div class="edit-control-group"><label>饱和度</label><input type="range" id="saturationSlider" min="0" max="200" value="100" step="1"><span id="satVal">100</span>%</div>
+            <div class="edit-control-group"><label>对比度</label><input type="range" id="contrastSlider" min="0" max="200" value="100" step="1"><span id="contVal">100</span>%</div>
+            <div class="edit-control-group"><label>马赛克强度</label><input type="range" id="mosaicSlider" min="0" max="30" value="0" step="1"><span id="mosaicVal">0</span> (像素块大小)</div>
+            <div class="marker-tools">
+                <span>✏️ 画笔标记</span>
+                <input type="color" id="penColor" value="#ff5555">
+                <label>粗细</label><input type="range" id="penSize" min="2" max="20" value="5">
+                <button id="clearMarkersBtn" class="btn-sm">清除标记</button>
+                <button id="applyMarkersBtn" class="btn-sm">应用标记</button>
+            </div>
+        </div>
+        <div class="flex-row" style="justify-content:center; gap:12px; margin-top:15px;">
+            <button id="saveEditedImageBtn" class="btn">💾 保存并替换原图</button>
+            <button id="cancelImageEditBtn" class="btn-outline btn">取消</button>
+        </div>
+    </div>
+</div>
+
+<div id="toastContainer" class="toast-container"></div>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
