@@ -10,6 +10,24 @@ let originalImageBitmap = null;
 let editCanvasCtx = null;
 let markerPoints = [];
 let isDrawing = false;
+let rafId = null;
+let debounceTimer = null;
+
+// 防抖函数（滑杆使用）
+function debounceApply() {
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => applyAllEffects(), 60);
+}
+
+// rAF 节流函数（画笔使用）
+function rafApply() {
+  if (!rafId) {
+    rafId = requestAnimationFrame(() => {
+      applyAllEffects();
+      rafId = null;
+    });
+  }
+}
 
 function updateSliderDisplays() {
   $('sketchVal').innerText = $('sketchSlider').value;
@@ -43,34 +61,32 @@ function applyAllEffects() {
   const temp = document.createElement('canvas');
   temp.width = w; temp.height = h;
   const tctx = temp.getContext('2d');
-  tctx.drawImage(originalImageBitmap, 0, 0);
 
-  let imageData = tctx.getImageData(0, 0, w, h);
-  const sat = parseInt($('saturationSlider').value, 10) / 100;
-  const contrast = parseInt($('contrastSlider').value, 10) / 100;
-  const d = imageData.data;
-  for (let i = 0; i < d.length; i += 4) {
-    const r = d[i], g = d[i + 1], b = d[i + 2];
-    const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-    const satR = gray + (r - gray) * sat;
-    const satG = gray + (g - gray) * sat;
-    const satB = gray + (b - gray) * sat;
-    const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
-    d[i] = Math.min(255, Math.max(0, factor * (satR - 128) + 128));
-    d[i + 1] = Math.min(255, Math.max(0, factor * (satG - 128) + 128));
-    d[i + 2] = Math.min(255, Math.max(0, factor * (satB - 128) + 128));
-  }
-  tctx.putImageData(imageData, 0, 0);
+  // 使用原生 ctx.filter 处理饱和度/对比度（GPU加速，性能提升几十倍）
+  const sat = parseInt($('saturationSlider').value, 10);
+  const contrast = parseInt($('contrastSlider').value, 10);
+  tctx.filter = `saturate(${sat}%) contrast(${contrast}%)`;
+  tctx.drawImage(originalImageBitmap, 0, 0);
+  tctx.filter = 'none';
 
   const mosaic = parseInt($('mosaicSlider').value, 10);
   if (mosaic > 0) {
+    // 优化：一次性获取整张图片数据，避免每块都调用 getImageData（性能提升几10倍）
+    let imageData = tctx.getImageData(0, 0, w, h);
+    const d = imageData.data;
     for (let y = 0; y < h; y += mosaic) {
       for (let x = 0; x < w; x += mosaic) {
-        const px = tctx.getImageData(x, y, 1, 1).data;
-        tctx.fillStyle = `rgb(${px[0]},${px[1]},${px[2]})`;
-        tctx.fillRect(x, y, mosaic, mosaic);
+        const idx = (y * w + x) * 4;
+        const r = d[idx], g = d[idx + 1], b = d[idx + 2];
+        for (let dy = 0; dy < mosaic && y + dy < h; dy++) {
+          for (let dx = 0; dx < mosaic && x + dx < w; dx++) {
+            const i = ((y + dy) * w + (x + dx)) * 4;
+            d[i] = r; d[i + 1] = g; d[i + 2] = b;
+          }
+        }
       }
     }
+    tctx.putImageData(imageData, 0, 0);
   }
 
   const sketch = parseInt($('sketchSlider').value, 10);
@@ -116,8 +132,8 @@ export async function openImageEditor(item) {
 // ---- 触控/指针统一处理 ----
 function bindPointerHandlers() {
   const canvas = $('editedCanvas');
-  const start = (e) => { e.preventDefault(); isDrawing = true; const p = getPointerPos(e); addMarker(p.x, p.y); applyAllEffects(); };
-  const move = (e) => { if (!isDrawing) return; e.preventDefault(); const p = getPointerPos(e); addMarker(p.x, p.y); applyAllEffects(); };
+  const start = (e) => { e.preventDefault(); isDrawing = true; const p = getPointerPos(e); addMarker(p.x, p.y); rafApply(); };
+  const move = (e) => { if (!isDrawing) return; e.preventDefault(); const p = getPointerPos(e); addMarker(p.x, p.y); rafApply(); };
   const end = () => { isDrawing = false; };
   canvas.addEventListener('mousedown', start);
   canvas.addEventListener('mousemove', move);
@@ -131,7 +147,7 @@ function bindPointerHandlers() {
 export function initImageEditor() {
   const sliders = ['sketchSlider', 'saturationSlider', 'contrastSlider', 'mosaicSlider'];
   for (const id of sliders) {
-    $(id).addEventListener('input', () => { updateSliderDisplays(); applyAllEffects(); });
+    $(id).addEventListener('input', () => { updateSliderDisplays(); debounceApply(); });
   }
   $('clearMarkersBtn').onclick = () => { markerPoints = []; applyAllEffects(); };
   $('applyMarkersBtn').onclick = () => applyAllEffects();
