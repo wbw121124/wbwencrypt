@@ -3,6 +3,7 @@
 // ============================================================================
 import { $, toast } from './ui.js';
 import { addFileToLeft } from './library.js';
+import { icon } from './icons.js';
 
 let currentStream = null;
 let mediaRecorder = null;
@@ -23,10 +24,10 @@ export function initCamera() {
         <div>
             <video id="camPreviewVideo" autoplay playsinline class="camera-video"></video>
             <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
-                <button id="takePhotoBtn" class="btn-sm">📷 拍照添加</button>
-                <button id="startRecordBtn" class="btn-sm">🔴 开始录像</button>
-                <button id="stopRecordBtn" class="btn-sm" disabled>⏹️ 停止录像</button>
-                <button id="closeCamBtn" class="btn-sm">❌ 关闭</button>
+                <button id="takePhotoBtn" class="btn-sm"><i class='icon' data-icon='camera'></i> 拍照添加</button>
+                <button id="startRecordBtn" class="btn-sm"><i class='icon' data-icon='video'></i> 开始录像</button>
+                <button id="stopRecordBtn" class="btn-sm" disabled><i class='icon' data-icon='square'></i> 停止录像</button>
+                <button id="closeCamBtn" class="btn-sm"><i class='icon' data-icon='x'></i> 关闭</button>
             </div>
             <div id="recordStatus" class="small-note"></div>
         </div>

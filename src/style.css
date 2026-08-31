@@ -148,4 +148,18 @@ hr{border-color:var(--border);margin:1rem 0;}
   .file-card img,.file-card video{height:80px;}
   .toast-container{left:12px;right:12px;max-width:none;top:12px;}
 }
+/* 开源图标（Lucide）内联 SVG */
+.icon{display:inline-flex;align-items:center;justify-content:center;vertical-align:-0.125em;color:inherit;line-height:0;}
+button .icon,label .icon,h4 .icon {vertical-align:-0.2em;margin-inline-end:2px;}
+h1 .icon,h3 .icon,span .icon,div .icon{vertical-align:-0.15em;}
+/* SweetAlert2 深色主题（匹配 Dark+） */
+.swal2-popup{background:var(--card-bg);color:var(--text);border:1px solid var(--border);border-radius:1rem;}
+.swal2-title{color:var(--text);}
+.swal2-html-container{color:var(--text-sec);}
+.swal2-input{background:var(--bg-editor);border:1px solid var(--border);color:var(--text);border-radius:.6rem;}
+.swal2-input:focus{box-shadow:0 0 0 2px rgba(55,148,255,0.25);}
+.swal2-confirm{background:var(--accent) !important;border-radius:2rem;font-weight:500;}
+.swal2-cancel{background:var(--bg-activity);color:var(--text);border-radius:2rem;border:1px solid var(--border);}
+.swal2-cancel:hover{background:var(--selection-soft);}
+
 

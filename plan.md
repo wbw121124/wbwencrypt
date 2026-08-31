@@ -20,18 +20,12 @@
 - [x] 功能7：文件库 localStorage 缓存（刷新恢复）
 - [x] 接线 settings.js（导入 / 导出配置）到 main.js
 - [x] 创建 icons.js（Lucide 开源图标集，MIT）：图标底层已就绪
-
-## 进行中 [~]
-- [~] 图标替换：表情符号 → 开源 SVG 图标
-  - [x] icons.js 图标库 + `icon()` / `injectIcons()` 帮助函数
-  - [x] library.js 动态图标（doc-icon、动作按钮）已替换
-  - [ ] index.html 内联 emoji 替换为 `<i data-icon>` 占位
-  - [ ] main.js 启动时调用 `injectIcons()` 填充
-- [~] sweetalert2 替换浏览器原生弹窗
-  - [x] 安装 sweetalert2
-  - [x] library.js：`prompt`(重命名) → Swal 输入框
-  - [ ] settings.js：`confirm`(导出配置) → Swal 确认框
-  - [ ] style.css 覆盖 SweetAlert2 变量以匹配 Dark+ 主题
+- [x] 图标替换：表情符号 → 开源 SVG 图标（index.html、library.js、camera.js、decrypt.js、main.js 全部替换）
+- [x] sweetalert2 替换浏览器原生弹窗（library.js + settings.js）
+- [x] SweetAlert2 深色主题覆盖（style.css）
+- [x] .icon 图标样式（style.css）
+- [x] git 历史清理：filter-branch 删除 test/encrypted_batch_*.7z + 强制推送
+- [x] .gitignore 添加 *.7z 忽略规则
 
 ## 待办 [ ]（下一步）
 - [ ] 图片编辑器性能修复（可引入 npm 包）

@@ -157,7 +157,7 @@ function setup() {
       if (storeHash) toast('已记忆此文件的密钥');
     } catch (e) {
       hideProgress('encryptProgress');
-      buttonProgress(btn, '❌ 重试');
+      buttonProgress(btn, '重试');
       toast('加密失败: ' + e.message, 'error');
     } finally { btn.disabled = false; }
   };

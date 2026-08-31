@@ -4,6 +4,7 @@
 import { $, toast, hideProgress, setProgress, openImageModal, openVideoModal } from './ui.js';
 import { decryptEncodedBytes, decompress, sha256, splitPayload, uint8FromBuffer, importKeyFromB64, deriveKeyFromPasswordIter } from './crypto.js';
 import { makeKeyResolver, rememberDecryptSuccess, getRememberedDecrypt } from './key.js';
+import { icon } from './icons.js';
 import { addFileToLeft } from './library.js';
 
 // ---- 批量载荷解析（继承旧版"多重"格式） ----
@@ -107,7 +108,7 @@ async function renderFileGrid(files, container) {
     const actions = document.createElement('div');
     actions.className = 'batch-actions';
     const dlAll = document.createElement('button');
-    dlAll.innerText = '⬇️ 下载全部文件 (ZIP打包)';
+    dlAll.innerHTML = icon('download') + ' 下载全部文件 (ZIP打包)';
     dlAll.className = 'btn-sm';
     dlAll.onclick = async () => {
       dlAll.disabled = true; dlAll.innerText = '打包中...';
@@ -156,7 +157,7 @@ async function decryptOne({ file, usePassword, inputStr }) {
     const computed = await sha256(decomp);
     if (!arrayEqual(computed, expectedHash)) throw new Error('批量哈希校验失败');
     hideProgress('decryptProgress');
-    return { badge: '✅ 解密成功 (批量)', cls: 'success', msg: `✓ 完整性通过，共 ${asBatch.length} 个文件`, files: asBatch };
+    return { badge: icon('check-circle') + ' 解密成功 (批量)', cls: 'success', msg: `✓ 完整性通过，共 ${asBatch.length} 个文件`, files: asBatch };
   }
 
   const single = parseSinglePayload(decomp);
@@ -167,7 +168,7 @@ async function decryptOne({ file, usePassword, inputStr }) {
   const base = fname.replace(/\.[^.]*$/, '');
   const properName = base + extFromMime(single.mimeType, fname);
   hideProgress('decryptProgress');
-  return { badge: '✅ 解密成功', cls: 'success', msg: '✓ 哈希验证通过', files: [{ name: properName, mime: single.mimeType, dataBuffer: original }] };
+  return { badge: icon('check-circle') + ' 解密成功', cls: 'success', msg: '✓ 哈希验证通过', files: [{ name: properName, mime: single.mimeType, dataBuffer: original }] };
 }
 
 // ---- 初始化解密区 ----
@@ -202,12 +203,12 @@ export function initDecrypt() {
       verifyMsg.innerHTML = `<span>${r.msg}</span>`;
       preview.style.display = 'block';
       await renderFileGrid(r.files, preview);
-      buttonText(btn, '✅ 解密完成');
+      buttonText(btn, icon('check-circle') + ' 解密完成');
     } catch (err) {
-      badge.innerText = '❌ 失败'; badge.className = 'status-badge error';
+      badge.innerHTML = icon('x') + ' 失败'; badge.className = 'status-badge error';
       verifyMsg.innerHTML = `<span>${err.message}</span>`;
       preview.innerHTML = '';
-      buttonText(btn, '🔎 解密并校验完整性');
+      buttonText(btn, icon('zoom-in') + ' 解密并校验完整性');
     } finally { btn.disabled = false; }
   };
 
