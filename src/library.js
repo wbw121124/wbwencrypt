@@ -292,6 +292,7 @@ export function renameItem(id, newName) {
 function makeTransferItem(item, isRight, actions) {
   const div = document.createElement('div');
   div.className = 'transfer-item';
+  div.dataset.itemId = item.id;
   // 悬停显示内容哈希摘要（功能5）
   if (item.hashHex) div.title = `${item.name}\nSHA-256: ${item.hashHex.slice(0, 16)}… (${item.hashHex})`;
   const isImage = isImageType(item.mime);
@@ -332,7 +333,7 @@ function makeTransferItem(item, isRight, actions) {
       menuItem.innerHTML = (a.icon || '') + ' ' + a.label;
       menuItem.onclick = (e) => {
         e.stopPropagation();
-        dropdown.classList.remove('show');
+        closeAllMenus();
         a.onclick(item, e);
       };
       dropdown.appendChild(menuItem);
@@ -341,19 +342,88 @@ function makeTransferItem(item, isRight, actions) {
   menuWrapper.appendChild(dropdown);
   div.appendChild(menuWrapper);
 
-  // 点击菜单外关闭
+  // 点击菜单按钮切换显示
   menuBtn.onclick = (e) => {
     e.stopPropagation();
-    dropdown.classList.toggle('show');
+    const isOpen = dropdown.classList.contains('show');
+    closeAllMenus();
+    if (!isOpen) {
+      showMenu(dropdown, menuBtn);
+    }
+  };
+
+  // 右键菜单
+  div.oncontextmenu = (e) => {
+    e.preventDefault();
+    closeAllMenus();
+    showContextMenu(e.clientX, e.clientY, item, actions);
   };
 
   div.onclick = (e) => {
     if (menuWrapper.contains(e.target)) return;
+    closeAllMenus();
     isRight ? moveToLeft(item.id) : moveToRight(item.id);
   };
 
   return div;
 }
+
+// 关闭所有菜单
+function closeAllMenus() {
+  document.querySelectorAll('.action-menu-dropdown.show, .context-menu.show').forEach(el => {
+    el.classList.remove('show');
+  });
+}
+
+// 显示菜单（置顶）
+function showMenu(menu, anchor) {
+  const rect = anchor.getBoundingClientRect();
+  menu.style.left = rect.right - 160 + 'px';
+  menu.style.top = rect.top + 'px';
+  menu.classList.add('show');
+}
+
+// 显示右键菜单
+function showContextMenu(x, y, item, actions) {
+  let menu = document.getElementById('contextMenu');
+  if (!menu) {
+    menu = document.createElement('div');
+    menu.id = 'contextMenu';
+    menu.className = 'context-menu';
+    document.body.appendChild(menu);
+  }
+
+  menu.innerHTML = '';
+  for (const a of actions) {
+    if (a.separator) {
+      const sep = document.createElement('div');
+      sep.className = 'context-menu-separator';
+      menu.appendChild(sep);
+    } else {
+      const menuItem = document.createElement('div');
+      menuItem.className = 'context-menu-item' + (a.danger ? ' danger' : '');
+      menuItem.innerHTML = (a.icon || '') + ' ' + a.label;
+      menuItem.onclick = (e) => {
+        e.stopPropagation();
+        menu.classList.remove('show');
+        a.onclick(item, e);
+      };
+      menu.appendChild(menuItem);
+    }
+  }
+
+  // 确保菜单在视口内
+  menu.style.left = Math.min(x, window.innerWidth - 170) + 'px';
+  menu.style.top = Math.min(y, window.innerHeight - 200) + 'px';
+  menu.classList.add('show');
+}
+
+// 点击其他地方关闭菜单
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.action-menu')) {
+    closeAllMenus();
+  }
+});
 
 function makeFolderItem(folder, isRight) {
   const div = document.createElement('div');
