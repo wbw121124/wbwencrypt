@@ -483,56 +483,140 @@ export function render() {
   const leftDiv = $('leftList'), rightDiv = $('rightList');
   const leftC = $('leftCount'), rightC = $('rightCount');
   if (!leftDiv || !rightDiv) return;
-  leftDiv.innerHTML = ''; rightDiv.innerHTML = '';
 
-  function setupDragForElement(el, id) {
-    try {
-      el.draggable = true;
-      if (el.dataset) el.dataset.itemId = id;
-    } catch (e) { /* 测试环境可能不支持 */ }
-  }
-
-  function renderItems(items, container) {
-    for (const item of items) {
+  // 清空并重建（只重建 DOM，不重建数据）
+  function buildList(items, container, isRight) {
+    container.innerHTML = '';
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      let el;
       if (item.isFolder) {
-        const folderEl = makeFolderItem(item, false);
-        setupDragForElement(folderEl, item.id);
-        container.appendChild(folderEl);
+        el = makeFolderItem(item, isRight);
       } else {
-        const itemEl = makeTransferItem(item, false, getItemActions());
-        setupDragForElement(itemEl, item.id);
-        container.appendChild(itemEl);
+        el = makeTransferItem(item, isRight, getItemActions());
       }
+      el.draggable = true;
+      el.dataset.id = item.id;
+      el.dataset.type = item.isFolder ? 'folder' : 'file';
+      el.dataset.index = i;
+      el.dataset.list = isRight ? 'right' : 'left';
+      container.appendChild(el);
     }
   }
 
-  renderItems(leftItems, leftDiv);
-  renderItems(rightItems, rightDiv);
+  buildList(leftItems, leftDiv, false);
+  buildList(rightItems, rightDiv, true);
 
-  // 为列表设置放置目标（仅浏览器环境）
-  [leftDiv, rightDiv].forEach(list => {
-    if (!list || typeof list.addEventListener !== 'function') return;
-    list.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      list.classList.add('drag-over');
+  // 使用事件委托处理拖拽
+  function handleDragStart(e) {
+    const el = e.target.closest('.transfer-item, .transfer-folder');
+    if (!el) return;
+    e.dataTransfer.setData('text/plain', el.dataset.id);
+    e.dataTransfer.effectAllowed = 'move';
+    el.classList.add('dragging');
+    // 存储源信息
+    e.dataTransfer.setData('application/x-source-list', el.dataset.list);
+    e.dataTransfer.setData('application/x-source-index', el.dataset.index);
+  }
+
+  function handleDragEnd(e) {
+    document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    document.querySelectorAll('.drop-before, .drop-after').forEach(el => {
+      el.classList.remove('drop-before', 'drop-after');
     });
+  }
+
+  function handleDragOver(e) {
+    const target = e.target.closest('.transfer-item, .transfer-folder');
+    const list = e.target.closest('.transfer-list');
+
+    if (!list) return;
+
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+
+    // 移除所有指示器
+    document.querySelectorAll('.drop-before, .drop-after').forEach(el => {
+      el.classList.remove('drop-before', 'drop-after');
+    });
+
+    if (target && target !== document.activeElement?.closest('.transfer-item, .transfer-folder')) {
+      // 添加放置位置指示器
+      const rect = target.getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      if (e.clientY < midY) {
+        target.classList.add('drop-before');
+      } else {
+        target.classList.add('drop-after');
+      }
+    }
+
+    list.classList.add('drag-over');
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    document.querySelectorAll('.drop-before, .drop-after').forEach(el => {
+      el.classList.remove('drop-before', 'drop-after');
+    });
+
+    const sourceId = parseInt(e.dataTransfer.getData('text/plain'));
+    const sourceList = e.dataTransfer.getData('application/x-source-list');
+    const sourceIndex = parseInt(e.dataTransfer.getData('application/x-source-index'));
+
+    if (isNaN(sourceId)) return;
+
+    const targetList = e.target.closest('.transfer-list');
+    if (!targetList) return;
+
+    const targetIsRight = targetList === rightDiv;
+    const targetId = parseInt(targetList.dataset.targetId || e.target.closest('.transfer-item, .transfer-folder')?.dataset.id);
+
+    // 找到目标位置
+    const targetItems = targetIsRight ? rightItems : leftItems;
+    let targetIndex = targetItems.length;
+
+    const dropTarget = e.target.closest('.transfer-item, .transfer-folder');
+    if (dropTarget) {
+      const idx = parseInt(dropTarget.dataset.index);
+      const rect = dropTarget.getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      targetIndex = e.clientY < midY ? idx : idx + 1;
+    }
+
+    // 排除源自身
+    if (sourceList === (targetIsRight ? 'right' : 'left') && sourceIndex === targetIndex - 1) return;
+
+    // 从源列表移除
+    const sourceItems = sourceList === 'right' ? rightItems : leftItems;
+    const [movedItem] = sourceItems.splice(sourceIndex, 1);
+    if (!movedItem) return;
+
+    // 插入到目标列表
+    if (sourceList === (targetIsRight ? 'right' : 'left')) {
+      // 同列表内移动，调整索引
+      if (sourceIndex < targetIndex) targetIndex--;
+      targetItems.splice(targetIndex, 0, movedItem);
+    } else {
+      // 跨列表移动
+      if (targetIsRight) moveToRight(movedItem.id);
+      else moveToLeft(movedItem.id);
+      return;
+    }
+
+    render();
+  }
+
+  // 绑定事件（使用事件委托）
+  [leftDiv, rightDiv].forEach(list => {
+    list.addEventListener('dragstart', (e) => handleDragStart(e));
+    list.addEventListener('dragend', handleDragEnd);
+    list.addEventListener('dragover', handleDragOver);
+    list.addEventListener('drop', handleDrop);
     list.addEventListener('dragleave', (e) => {
       if (!list.contains(e.relatedTarget)) list.classList.remove('drag-over');
-    });
-    list.addEventListener('drop', (e) => {
-      e.preventDefault();
-      list.classList.remove('drag-over');
-      const id = parseInt(e.dataTransfer.getData('text/plain'));
-      if (isNaN(id)) return;
-      const moved = [...leftItems, ...rightItems].find(i => i.id === id);
-      if (!moved) return;
-      const targetIsRight = list === rightDiv;
-      const currentIsRight = rightItems.some(i => i.id === id);
-      if (currentIsRight !== targetIsRight) {
-        if (targetIsRight) moveToRight(id);
-        else moveToLeft(id);
-      }
     });
   });
 

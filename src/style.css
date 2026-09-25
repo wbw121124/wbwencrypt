@@ -97,6 +97,9 @@ input[type="file"].visually-hidden{position:absolute;width:1px;height:1px;paddin
 /* 拖拽样式 */
 .transfer-item.dragging,.transfer-folder.dragging{opacity:0.5;border:2px dashed var(--focus);}
 .transfer-list.drag-over{background:var(--selection-soft);border:2px dashed var(--focus);}
+/* 放置位置指示器 */
+.transfer-item.drop-before::before,.transfer-folder.drop-before::before{content:'';display:block;height:3px;background:var(--focus);border-radius:2px;margin-bottom:4px;}
+.transfer-item.drop-after::after,.transfer-folder.drop-after::after{content:'';display:block;height:3px;background:var(--focus);border-radius:2px;margin-top:4px;}
 /* 视图模式 */
 .view-grid .transfer-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;}
 .view-grid .transfer-item{flex-direction:column;text-align:center;padding:8px;}
