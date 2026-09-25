@@ -375,11 +375,12 @@ function closeAllMenus() {
   });
 }
 
-// 显示菜单（置顶）
-function showMenu(menu, anchor) {
+// 定位菜单（跟随滚动）
+function positionMenu(menu, anchor) {
   const rect = anchor.getBoundingClientRect();
-  menu.style.left = rect.right - 160 + 'px';
-  menu.style.top = rect.top + 'px';
+  menu.style.position = 'absolute';
+  menu.style.top = rect.bottom + 'px';
+  menu.style.left = rect.left + 'px';
   menu.classList.add('show');
 }
 
