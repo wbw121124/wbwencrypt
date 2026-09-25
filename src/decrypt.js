@@ -117,7 +117,10 @@ async function decryptOne({ file, usePassword, inputStr }) {
   const resolveKey = usePassword
     ? makeKeyResolver(true, inputStr)
     : () => importKeyFromB64(inputStr);
-  const r = await decryptEncodedBytes(encBuf, resolveKey, {});
+  // 分片解密进度：接入 onProgress，让 #decryptProgress 真实反映 i/n 与百分比
+  const r = await decryptEncodedBytes(encBuf, resolveKey, {
+    onProgress: (pct, i, count) => setProgress('decryptProgress', `🔐 解密分片 ${i}/${count} (${pct}%)`),
+  });
   // 非本工具格式：头部 MAGIC 不匹配时按旧版解析只会报「载荷损坏」，这里直接给明确提示
   if (r.legacy) throw new Error('不是本工具生成的加密文件');
   const finalPlain = r.plain;
@@ -187,7 +190,10 @@ export function initDecrypt() {
       preview.innerHTML = '';
       buttonProgress(btn, icon('zoom-in') + ' 解密并校验完整性');
       toast(err.message || '解密失败', 'error');
-    } finally { btn.disabled = false; }
+    } finally {
+      btn.disabled = false;
+      hideProgress('decryptProgress'); // 失败路径此前会残留「解密中...」，统一在这里收尾
+    }
   };
 
   // 功能4：加载时若有历史密钥凭据，自动填入并提示

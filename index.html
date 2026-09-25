@@ -71,6 +71,7 @@
                 <input type="text" id="decryptKeyInput" placeholder="粘贴密钥(Base64) 或 密码(需勾选派生)" style="width:100%; margin-top:8px;">
                 <div class="flex-row"><label><input type="checkbox" id="decryptUsePassword"> 密码派生模式</label></div>
                 <button id="decryptBtn" class="btn" style="background: var(--secondary);"><i class="icon" data-icon="zoom-in"></i> 解密并校验完整性</button>
+                <div id="decryptProgress" class="small-note" style="display:none;"></div>
             </div>
             <div id="decryptStatus" style="margin-top:1rem;">
                 <div class="status-badge">等待解密</div>

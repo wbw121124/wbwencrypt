@@ -3,6 +3,7 @@
 // ============================================================================
 import { $, toast } from './ui.js';
 import { addFileToLeft } from './library.js';
+import { injectIcons } from './icons.js';
 
 let currentStream = null;
 let mediaRecorder = null;
@@ -31,6 +32,8 @@ export function initCamera() {
             <div id="recordStatus" class="small-note"></div>
         </div>
     `;
+    // 面板是点击后才动态插入的，启动时的 injectIcons 覆盖不到，这里补一次容器级填充
+    injectIcons(container);
     const videoElem = $('camPreviewVideo');
     navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       .then(stream => { currentStream = stream; videoElem.srcObject = stream; videoElem.play(); })
