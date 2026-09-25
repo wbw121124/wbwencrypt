@@ -217,7 +217,6 @@ async function readDirectoryHandle(dirHandle, path = '') {
 
 // 同步资源管理器数据
 let currentFolderStack = []; // 文件夹导航栈
-let currentItems = []; // 当前显示的项目
 
 function syncExplorerData() {
   const leftItems = libraryModule.getLeftItems();
@@ -233,7 +232,7 @@ function syncExplorerData() {
     }
   }
 
-  currentItems = itemsToShow;
+  currentFolderStack = [];
   content.innerHTML = '';
 
   // 渲染项目
