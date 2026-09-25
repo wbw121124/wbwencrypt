@@ -5,6 +5,7 @@ import {
   generateRandomKey, exportKeyB64, importKeyFromB64, deriveKeyFromPassword,
   deriveKeyFromPasswordIter, arrBufToBase64,
 } from './crypto.js';
+import { toast } from './ui.js';
 
 const STORE_PREFIX = 'wbwencrypt:key:';
 const META_PREFIX = 'wbwencrypt:meta:';
@@ -12,8 +13,15 @@ const MAX_ENTRIES = 50;
 
 // ---- localStorage 工具（try/catch 防隐私模式报错）----
 function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
-function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
-function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+// 本地存储写入/删除失败只提示一次，避免每次操作都刷屏
+let warnedStoreFail = false;
+function warnStoreFailOnce() {
+  if (warnedStoreFail) return;
+  warnedStoreFail = true;
+  toast('本地存储写入失败：浏览器存储空间不足或被禁用，密钥记忆可能不会保存', 'error');
+}
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { warnStoreFailOnce(); } }
+function lsDel(k) { try { localStorage.removeItem(k); } catch (e) { warnStoreFailOnce(); } }
 
 // ---- 记忆存储键名（按文件内容哈希分键）----
 function hashKey(hashHex) { return STORE_PREFIX + hashHex; }

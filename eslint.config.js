@@ -40,8 +40,8 @@ export default [
       'no-empty': ['error', { allowEmptyCatch: true }],
       // 用到但未声明的标识符（no-undef 依赖 globals 环境声明）
       'no-undef': 'error',
-      // 抛错时保留原始异常：提交点 4 为两处 catch 补 cause 后恢复为默认（error）
-      'preserve-caught-error': 'off',
+      // 抛错时必须保留原始异常（new Error(msg, { cause: e })），排障不丢信息
+      'preserve-caught-error': 'error',
     },
   },
 

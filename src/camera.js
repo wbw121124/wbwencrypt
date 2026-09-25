@@ -40,7 +40,12 @@ export function initCamera() {
       const canvas = document.createElement('canvas');
       canvas.width = videoElem.videoWidth; canvas.height = videoElem.videoHeight;
       canvas.getContext('2d').drawImage(videoElem, 0, 0);
-      canvas.toBlob(blob => { if (blob) addFileToLeft(new File([blob], `photo_${Date.now()}.jpg`, { type: 'image/jpeg' })).then(() => toast('已添加照片')); }, 'image/jpeg', 0.9);
+      canvas.toBlob((blob) => {
+        if (!blob) { toast('拍照失败：无法生成图片', 'error'); return; }
+        addFileToLeft(new File([blob], `photo_${Date.now()}.jpg`, { type: 'image/jpeg' }))
+          .then(() => toast('已添加照片'))
+          .catch((err) => toast('照片添加失败：' + (err && err.message ? err.message : '未知错误'), 'error'));
+      }, 'image/jpeg', 0.9);
     };
     const startBtn = $('startRecordBtn'), stopBtn = $('stopRecordBtn'), status = $('recordStatus');
     startBtn.onclick = () => {
@@ -50,7 +55,9 @@ export function initCamera() {
       mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
       mediaRecorder.onstop = () => {
         const blob = new Blob(recordedChunks, { type: 'video/webm' });
-        addFileToLeft(new File([blob], `video_${Date.now()}.webm`, { type: 'video/webm' })).then(() => toast('录像已添加'));
+        addFileToLeft(new File([blob], `video_${Date.now()}.webm`, { type: 'video/webm' }))
+          .then(() => toast('录像已添加'))
+          .catch((err) => toast('录像添加失败：' + (err && err.message ? err.message : '未知错误'), 'error'));
         status.innerText = '录像已添加';
         startBtn.disabled = false; stopBtn.disabled = true;
       };

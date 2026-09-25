@@ -54,20 +54,24 @@ export function initEditor() {
   };
   $('saveEditToFileBtn').onclick = async () => {
     if (!currentEditingItem) return;
-    const isHtml = isHtmlMode();
-    const newContent = isHtml ? $('modalHtmlContent').value : $('modalTxtContent').value;
-    const newMime = isHtml ? 'text/html' : 'text/plain';
-    let newName = currentEditingItem.name;
-    if (!isHtml) newName = newName.replace(/\.html?$/i, '') + '.txt';
-    const blob = new Blob([newContent], { type: newMime });
-    const newBuf = await blob.arrayBuffer();
-    currentEditingItem.arrayBuffer = newBuf;
-    currentEditingItem.dataUrl = URL.createObjectURL(blob);
-    currentEditingItem.mime = newMime;
-    currentEditingItem.name = newName;
-    currentEditingItem.hashHex = '';
-    hideModal('editorModal');
-    toast('已保存到原文件');
+    try {
+      const isHtml = isHtmlMode();
+      const newContent = isHtml ? $('modalHtmlContent').value : $('modalTxtContent').value;
+      const newMime = isHtml ? 'text/html' : 'text/plain';
+      let newName = currentEditingItem.name;
+      if (!isHtml) newName = newName.replace(/\.html?$/i, '') + '.txt';
+      const blob = new Blob([newContent], { type: newMime });
+      const newBuf = await blob.arrayBuffer();
+      currentEditingItem.arrayBuffer = newBuf;
+      currentEditingItem.dataUrl = URL.createObjectURL(blob);
+      currentEditingItem.mime = newMime;
+      currentEditingItem.name = newName;
+      currentEditingItem.hashHex = '';
+      hideModal('editorModal');
+      toast('已保存到原文件');
+    } catch (err) {
+      toast('保存失败：' + (err && err.message ? err.message : '未知错误'), 'error');
+    }
   };
 }
 

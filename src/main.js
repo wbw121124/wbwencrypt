@@ -61,7 +61,25 @@ function setupMemoryPanel() {
   renderMemoryPanel();
 }
 
+// ---- 全局异常兜底 ----
+// 未被 catch 的 Promise 拒绝与脚本错误统一给出中文提示；
+// 已被各业务处 catch 的错误不会冒泡到这里，因此不会重复弹出。
+function installGlobalErrorFallback() {
+  window.addEventListener('unhandledrejection', (e) => {
+    const reason = e.reason;
+    const msg = (reason && reason.message) ? reason.message : String(reason || '未知原因');
+    toast('发生未处理的错误：' + msg, 'error');
+  });
+  window.addEventListener('error', (e) => {
+    // 资源加载错误不冒泡到 window，此处只会收到脚本执行错误
+    if (e && e.message) toast('发生脚本错误：' + e.message, 'error');
+  });
+}
+
 function setup() {
+  // 先装全局兜底，再装配各模块
+  installGlobalErrorFallback();
+
   // 填充 HTML 中的 [data-icon] 占位图标
   injectIcons();
 
@@ -148,7 +166,14 @@ function setup() {
       $('downloadEncryptedBtn').onclick = () => {
         const a = document.createElement('a'); a.href = window.downloadUrl; a.download = downloadName; a.click();
       };
-      $('copyUsedKeyBtn').onclick = () => { navigator.clipboard.writeText(keyInfo.keyB64); toast('密钥已复制'); };
+      $('copyUsedKeyBtn').onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(keyInfo.keyB64);
+          toast('密钥已复制');
+        } catch (e) {
+          toast('复制失败，请手动复制', 'error');
+        }
+      };
       hideProgress('encryptProgress');
       buttonProgress(btn, '🔒 加密完成');
       // 功能3：加密后清空待加密列表

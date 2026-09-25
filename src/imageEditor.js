@@ -114,19 +114,25 @@ function applyAllEffects() {
 }
 
 export async function openImageEditor(item) {
-  currentEditItem = item;
-  const blob = new Blob([item.arrayBuffer], { type: item.mime });
-  const bitmap = await createImageBitmap(blob);
-  originalImageBitmap = bitmap;
-  $('originalCanvas').width = bitmap.width;
-  $('originalCanvas').height = bitmap.height;
-  $('editedCanvas').width = bitmap.width;
-  $('editedCanvas').height = bitmap.height;
-  $('originalCanvas').getContext('2d').drawImage(bitmap, 0, 0);
-  editCanvasCtx = $('editedCanvas').getContext('2d');
-  markerPoints = [];
-  applyAllEffects();
-  showModal('imageEditModal');
+  try {
+    const blob = new Blob([item.arrayBuffer], { type: item.mime });
+    const bitmap = await createImageBitmap(blob);
+    currentEditItem = item;
+    originalImageBitmap = bitmap;
+    $('originalCanvas').width = bitmap.width;
+    $('originalCanvas').height = bitmap.height;
+    $('editedCanvas').width = bitmap.width;
+    $('editedCanvas').height = bitmap.height;
+    $('originalCanvas').getContext('2d').drawImage(bitmap, 0, 0);
+    editCanvasCtx = $('editedCanvas').getContext('2d');
+    markerPoints = [];
+    applyAllEffects();
+    showModal('imageEditModal');
+  } catch (err) {
+    // 解码失败（图片损坏/格式不支持）时不得静默，也不进入可保存状态
+    currentEditItem = null;
+    toast('图片打开失败：' + (err && err.message ? err.message : '无法解码该图片'), 'error');
+  }
 }
 
 // ---- 触控/指针统一处理 ----
@@ -155,15 +161,19 @@ export function initImageEditor() {
   $('cancelImageEditBtn').onclick = () => hideModal('imageEditModal');
   $('saveEditedImageBtn').onclick = async () => {
     if (!currentEditItem) return;
-    const blob = await new Promise(res => $('editedCanvas').toBlob(res, currentEditItem.mime || 'image/png'));
-    if (!blob) { toast('保存失败', 'error'); return; }
-    currentEditItem.arrayBuffer = await blob.arrayBuffer();
-    currentEditItem.dataUrl = URL.createObjectURL(blob);
-    currentEditItem.mime = blob.type;
-    currentEditItem.hashHex = '';
-    updateItem(currentEditItem);
-    hideModal('imageEditModal');
-    toast('图片已更新');
+    try {
+      const blob = await new Promise(res => $('editedCanvas').toBlob(res, currentEditItem.mime || 'image/png'));
+      if (!blob) { toast('保存失败：画布导出为空', 'error'); return; }
+      currentEditItem.arrayBuffer = await blob.arrayBuffer();
+      currentEditItem.dataUrl = URL.createObjectURL(blob);
+      currentEditItem.mime = blob.type;
+      currentEditItem.hashHex = '';
+      updateItem(currentEditItem);
+      hideModal('imageEditModal');
+      toast('图片已更新');
+    } catch (err) {
+      toast('图片保存失败：' + (err && err.message ? err.message : '未知错误'), 'error');
+    }
   };
   bindPointerHandlers();
 }

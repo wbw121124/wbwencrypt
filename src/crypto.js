@@ -310,7 +310,8 @@ export async function decryptEncodedBytes(buf, resolveKey, opts = {}) {
       const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
       outChunks.push(pt);
     } catch (e) {
-      throw new Error('解密失败：密钥错误或数据已损坏');
+      // 保留原始异常（cause），排障时可区分「密钥错误」与「数据损坏」
+      throw new Error('解密失败：密钥错误或数据已损坏', { cause: e });
     }
     onProgress(Math.round(((i + 1) / head.count) * 100), i + 1, head.count);
   }

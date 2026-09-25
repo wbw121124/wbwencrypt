@@ -135,17 +135,16 @@ async function renderFileGrid(files, container) {
 async function decryptOne({ file, usePassword, inputStr }) {
   const encBuf = await file.arrayBuffer();
   setProgress('decryptProgress', '🔍 解密中...');
-  const key = usePassword ? null : await importKeyFromB64(inputStr);
 
-  let finalPlain;
-  if (usePassword) {
-    const resolver = makeKeyResolver(true, inputStr);
-    const r = await decryptEncodedBytes(encBuf, resolver, {});
-    finalPlain = r.plain;
-  } else {
-    const r = await decryptEncodedBytes(encBuf, () => key, {});
-    finalPlain = r.plain;
-  }
+  // 密钥延迟到解析头部之后再导入：先判定是否本工具格式，
+  // 否则非本工具文件会先报「密钥格式错误」，永远看不到格式提示
+  const resolveKey = usePassword
+    ? makeKeyResolver(true, inputStr)
+    : () => importKeyFromB64(inputStr);
+  const r = await decryptEncodedBytes(encBuf, resolveKey, {});
+  // 非本工具格式：头部 MAGIC 不匹配时按旧版解析只会报「载荷损坏」，这里直接给明确提示
+  if (r.legacy) throw new Error('不是本工具生成的加密文件');
+  const finalPlain = r.plain;
 
   const { hash: expectedHash, compressed } = splitPayload(finalPlain);
   setProgress('decryptProgress', '📦 解压载荷...');
@@ -209,6 +208,7 @@ export function initDecrypt() {
       verifyMsg.innerHTML = `<span>${err.message}</span>`;
       preview.innerHTML = '';
       buttonText(btn, icon('zoom-in') + ' 解密并校验完整性');
+      toast(err.message || '解密失败', 'error');
     } finally { btn.disabled = false; }
   };
 

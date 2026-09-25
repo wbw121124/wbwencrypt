@@ -27,6 +27,14 @@ export function isVideoType(mime) { return mime.startsWith('video/'); }
 function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
 
+// 缓存写入失败只提示一次，避免每次列表变更都刷屏
+let warnedCacheFail = false;
+function warnCacheFailOnce() {
+  if (warnedCacheFail) return;
+  warnedCacheFail = true;
+  toast('文件库缓存写入失败：浏览器存储空间不足或被禁用，刷新后本次列表不会保留', 'error');
+}
+
 function dataUrlFromItem(item) {
   return URL.createObjectURL(new Blob([item.arrayBuffer], { type: item.mime }));
 }
@@ -53,10 +61,14 @@ function saveCache() {
       right: rightItems.map(serializeItem),
     };
     if (!lsSet(CACHE_KEY, JSON.stringify(payload))) {
-      // 写入失败（超限）→ 关闭缓存，避免反复尝试
+      // 写入失败（超限）→ 关闭缓存，避免反复尝试，并给出一次性提示
       cacheEnabled = false;
+      warnCacheFailOnce();
     }
-  } catch (e) { cacheEnabled = false; }
+  } catch (e) {
+    cacheEnabled = false;
+    warnCacheFailOnce();
+  }
 }
 
 // 功能7：恢复文件库缓存（页面加载时调用）
@@ -222,13 +234,17 @@ export function initLibrary({ hooks }) {
   registerActions(hooks);
   const addBtn = $('addFilesBtn');
   addBtn.addEventListener('change', (e) => {
-    addFilesToLeft(e.target.files).then(() => { e.target.value = ''; }).catch(() => {});
+    addFilesToLeft(e.target.files)
+      .catch((err) => toast('添加文件失败：' + (err && err.message ? err.message : '未知错误'), 'error'))
+      .finally(() => { e.target.value = ''; });
   });
   $('toRightBtn').onclick = () => { if (leftItems.length) moveToRight(leftItems[0].id); };
   $('toLeftBtn').onclick = () => { if (rightItems.length) moveToLeft(rightItems[0].id); };
   $('toAllRightBtn').onclick = moveAllRight;
   wireDragDrop('dropZone', (files) => {
-    addFilesToLeft(files).then(() => toast(`已添加 ${files.length} 个文件`)).catch(() => {});
+    addFilesToLeft(files)
+      .then(() => toast(`已添加 ${files.length} 个文件`))
+      .catch((err) => toast('添加文件失败：' + (err && err.message ? err.message : '未知错误'), 'error'));
   });
   // 功能7：恢复缓存
   const restored = restoreCache();

@@ -56,7 +56,7 @@ export function exportConfig() {
 export async function importConfig(file) {
   const text = await file.text();
   let cfg;
-  try { cfg = JSON.parse(text); } catch (e) { throw new Error('配置文件解析失败'); }
+  try { cfg = JSON.parse(text); } catch (e) { throw new Error('配置文件解析失败', { cause: e }); }
   if (!cfg || cfg.tag !== CONFIG_TAG) throw new Error('非有效的加密箱配置文件');
 
   // 恢复偏好
