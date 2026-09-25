@@ -646,7 +646,6 @@ export function render() {
     const sourceId = parseInt(e.dataTransfer.getData('text/plain'));
     const sourceList = e.dataTransfer.getData('application/x-source-list');
     const sourceIndex = parseInt(e.dataTransfer.getData('application/x-source-index'));
-    const isFolderSource = e.dataTransfer.getData('application/x-is-folder') === 'true';
 
     if (isNaN(sourceId)) return;
 
