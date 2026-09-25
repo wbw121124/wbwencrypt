@@ -216,113 +216,125 @@ async function readDirectoryHandle(dirHandle, path = '') {
 }
 
 // 同步资源管理器数据
+let currentFolderStack = []; // 文件夹导航栈
+let currentItems = []; // 当前显示的项目
+
 function syncExplorerData() {
   const leftItems = libraryModule.getLeftItems();
   const content = $('explorerContent');
   if (!content) return;
 
-  content.innerHTML = '';
-
-  // 递归渲染项目（包括文件夹内容）
-  function renderItems(items, container, depth = 0) {
-    for (const item of items) {
-      const el = document.createElement('div');
-      el.className = 'explorer-item' + (item.isFolder ? ' folder' : '');
-      el.draggable = true;
-      el.dataset.id = item.id;
-      el.dataset.type = item.isFolder ? 'folder' : 'file';
-      el.style.paddingLeft = (depth * 20 + 8) + 'px';
-
-      const iconEl = document.createElement('div');
-      iconEl.className = 'explorer-item-icon';
-      if (item.isFolder) {
-        iconEl.innerHTML = item.expanded ? icon('folder-open', 32) : icon('folder', 32);
-        iconEl.style.color = 'var(--code-blue)';
-      } else {
-        const ext = item.filePath?.split('.').pop()?.toLowerCase() || '';
-        const iconMap = {
-          jpg: 'image', jpeg: 'image', png: 'image', gif: 'image',
-          mp4: 'film', webm: 'film', avi: 'film',
-          txt: 'file-text', html: 'code', js: 'code', json: 'file-text',
-        };
-        iconEl.innerHTML = icon(iconMap[ext] || 'file', 32);
-      }
-
-      const nameEl = document.createElement('div');
-      nameEl.className = 'explorer-item-name';
-      nameEl.innerText = item.name;
-      nameEl.title = item.name;
-
-      el.appendChild(iconEl);
-      el.appendChild(nameEl);
-
-      // 点击选中
-      el.onclick = (e) => {
-        if (e.ctrlKey) {
-          if (selectedItems.has(item.id)) {
-            selectedItems.delete(item.id);
-          } else {
-            selectedItems.add(item.id);
-          }
-          renderExplorerSelection();
-        } else if (e.shiftKey) {
-          selectedItems.add(item.id);
-          renderExplorerSelection();
-        } else {
-          selectedItems.clear();
-          selectedItems.add(item.id);
-          renderExplorerSelection();
-        }
-      };
-
-      // 双击
-      el.ondblclick = () => {
-        if (item.isFolder) {
-          // 展开/折叠文件夹
-          item.expanded = !item.expanded;
-          syncExplorerData();
-        } else {
-          // 文件：添加到待加密列表
-          libraryModule.moveToRight(item.id);
-          toast(`已添加「${item.name}」到待加密列表`);
-        }
-      };
-
-      // 拖拽开始
-      el.ondragstart = (e) => {
-        e.dataTransfer.setData('text/plain', item.id.toString());
-        e.dataTransfer.effectAllowed = 'move';
-        el.classList.add('dragging');
-      };
-
-      // 拖拽结束
-      el.ondragend = () => {
-        el.classList.remove('dragging');
-        document.querySelectorAll('.explorer-item.drag-over').forEach(el => {
-          el.classList.remove('drag-over');
-        });
-      };
-
-      container.appendChild(el);
-
-      // 如果是文件夹且展开，递归渲染子项
-      if (item.isFolder && item.expanded && item.children) {
-        const childrenContainer = document.createElement('div');
-        childrenContainer.className = 'explorer-children';
-        childrenContainer.style.marginLeft = '20px';
-        renderItems(item.children, childrenContainer, depth + 1);
-        container.appendChild(childrenContainer);
-      }
+  // 如果有导航栈，只显示当前文件夹的内容
+  let itemsToShow = leftItems;
+  if (currentFolderStack.length > 0) {
+    const currentFolder = findItemById(leftItems, currentFolderStack[currentFolderStack.length - 1]);
+    if (currentFolder && currentFolder.children) {
+      itemsToShow = currentFolder.children;
     }
   }
 
-  renderItems(leftItems, content);
+  currentItems = itemsToShow;
+  content.innerHTML = '';
+
+  // 渲染项目
+  renderExplorerItems(itemsToShow, content, 0);
 
   // 更新面包屑
-  updateBreadcrumb(leftItems);
+  updateBreadcrumb(itemsToShow);
 
   // 为容器添加拖拽事件
   setupExplorerDrop(content);
+}
+
+function renderExplorerItems(items, container, depth) {
+  for (const item of items) {
+    const el = document.createElement('div');
+    el.className = 'explorer-item' + (item.isFolder ? ' folder' : '');
+    el.draggable = true;
+    el.dataset.id = item.id;
+    el.dataset.type = item.isFolder ? 'folder' : 'file';
+    el.style.paddingLeft = (depth * 16 + 8) + 'px';
+
+    const iconEl = document.createElement('div');
+    iconEl.className = 'explorer-item-icon';
+    if (item.isFolder) {
+      iconEl.innerHTML = icon('folder-open', 32);
+      iconEl.style.color = 'var(--code-blue)';
+    } else {
+      const ext = item.filePath?.split('.').pop()?.toLowerCase() || '';
+      const iconMap = {
+        jpg: 'image', jpeg: 'image', png: 'image', gif: 'image',
+        mp4: 'film', webm: 'film', avi: 'film',
+        txt: 'file-text', html: 'code', js: 'code', json: 'file-text',
+      };
+      iconEl.innerHTML = icon(iconMap[ext] || 'file', 32);
+    }
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'explorer-item-name';
+    nameEl.innerText = item.name;
+    nameEl.title = item.name;
+
+    el.appendChild(iconEl);
+    el.appendChild(nameEl);
+
+    // 点击选中
+    el.onclick = (e) => {
+      if (e.ctrlKey) {
+        if (selectedItems.has(item.id)) {
+          selectedItems.delete(item.id);
+        } else {
+          selectedItems.add(item.id);
+        }
+        renderExplorerSelection();
+      } else if (e.shiftKey) {
+        selectedItems.add(item.id);
+        renderExplorerSelection();
+      } else {
+        selectedItems.clear();
+        selectedItems.add(item.id);
+        renderExplorerSelection();
+      }
+    };
+
+    // 双击进入文件夹或添加到待加密列表
+    el.ondblclick = () => {
+      if (item.isFolder) {
+        // 进入文件夹
+        currentFolderStack.push(item.id);
+        syncExplorerData();
+      } else {
+        // 文件：添加到待加密列表
+        libraryModule.moveToRight(item.id);
+        toast(`已添加「${item.name}」到待加密列表`);
+      }
+    };
+
+    // 拖拽开始
+    el.ondragstart = (e) => {
+      e.dataTransfer.setData('text/plain', item.id.toString());
+      e.dataTransfer.effectAllowed = 'move';
+      el.classList.add('dragging');
+    };
+
+    // 拖拽结束
+    el.ondragend = () => {
+      el.classList.remove('dragging');
+      document.querySelectorAll('.explorer-item.drag-over').forEach(el => {
+        el.classList.remove('drag-over');
+      });
+    };
+
+    container.appendChild(el);
+
+    // 如果是文件夹且展开，递归渲染子项（仅在根级别显示）
+    if (item.isFolder && item.expanded && item.children && currentFolderStack.length === 0) {
+      const childrenContainer = document.createElement('div');
+      childrenContainer.className = 'explorer-children';
+      renderExplorerItems(item.children, childrenContainer, depth + 1);
+      container.appendChild(childrenContainer);
+    }
+  }
 }
 
 function setupExplorerDrop(container) {
@@ -410,9 +422,19 @@ function updateBreadcrumb(items) {
 }
 
 // 导航操作
-function explorerBack() {}
+function explorerBack() {
+  if (currentFolderStack.length > 0) {
+    currentFolderStack.pop();
+    syncExplorerData();
+  }
+}
 function explorerForward() {}
-function explorerUp() {}
+function explorerUp() {
+  if (currentFolderStack.length > 0) {
+    currentFolderStack.pop();
+    syncExplorerData();
+  }
+}
 function explorerRefresh() {
   syncExplorerData();
 }
