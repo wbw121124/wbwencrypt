@@ -1,83 +1,98 @@
 // ============================================================================
-// explorer.js —— Windows 风格文件资源管理器模式
+// explorer.js —— 文件资源管理器（两种视图共用同一数据源）
 // ============================================================================
 import { $, toast } from './ui.js';
 import { icon } from './icons.js';
 import Swal from 'sweetalert2';
 import * as libraryModule from './library.js';
 
-let explorerView = 'classic'; // 'classic' | 'explorer'
-let currentPath = '';
-let history = [];
-let historyIndex = -1;
-let selectedItems = new Set();
-let nextId = 1; // 独立计数器
+// 视图模式
+export const VIEW_MODES = {
+  CLASSIC: 'classic',
+  EXPLORER: 'explorer',
+};
 
-// 初始化
+let currentViewMode = localStorage.getItem('wbw-view-mode') || VIEW_MODES.CLASSIC;
+
+// 初始化资源管理器
 export function initExplorer() {
-  // 添加模式切换按钮
+  // 添���视图切换按钮
   const toolbar = document.querySelector('.file-area');
   if (!toolbar) return;
 
   const modeToggle = document.createElement('button');
-  modeToggle.id = 'explorerModeBtn';
-  modeToggle.className = 'btn-sm';
-  modeToggle.title = '切换文件资源管理器模式';
-  modeToggle.innerHTML = icon('layout', 16) + ' 资源管理器';
+  modeToggle.id = 'viewModeToggle';
+  modeToggle.className = 'btn-outline btn-sm';
+  modeToggle.title = '切换视图模式';
+  modeToggle.innerHTML = icon('layout', 14) + ' 资源管理器';
   modeToggle.style.marginInlineStart = 'auto';
   toolbar.querySelector('.flex-row')?.appendChild(modeToggle);
 
-  modeToggle.onclick = () => toggleExplorerMode();
+  modeToggle.onclick = () => toggleViewMode();
+
+  // 初始化视图
+  applyViewMode();
 }
 
-function toggleExplorerMode() {
-  if (explorerView === 'classic') {
-    explorerView = 'explorer';
-    showExplorerView();
-    toast('已切换到文件资源管理器模式');
+function toggleViewMode() {
+  if (currentViewMode === VIEW_MODES.CLASSIC) {
+    currentViewMode = VIEW_MODES.EXPLORER;
+    localStorage.setItem('wbw-view-mode', VIEW_MODES.EXPLORER);
+    applyViewMode();
+    toast('已切换到资源管理器模式');
   } else {
-    explorerView = 'classic';
-    showClassicView();
+    currentViewMode = VIEW_MODES.CLASSIC;
+    localStorage.setItem('wbw-view-mode', VIEW_MODES.CLASSIC);
+    applyViewMode();
     toast('已切换到经典模式');
   }
 }
 
-function showExplorerView() {
-  // 隐藏经典穿梭框
+function applyViewMode() {
   const classicPanel = document.querySelector('.transfer-container');
-  if (classicPanel) classicPanel.style.display = 'none';
+  const explorerContainer = document.getElementById('explorerContainer');
 
-  // 创建资源管理器界面
-  const container = document.getElementById('explorerContainer');
-  if (!container) {
-    const newContainer = document.createElement('div');
-    newContainer.id = 'explorerContainer';
-    newContainer.className = 'explorer-container';
-    newContainer.innerHTML = `
-      <div class="explorer-toolbar">
-        <button id="explorerBack" title="后退 (Alt+←)" ${historyIndex <= 0 ? 'disabled' : ''}>${icon('chevron-left', 16)}</button>
-        <button id="explorerForward" title="前进 (Alt+→)" disabled>${icon('chevron-right', 16)}</button>
-        <button id="explorerUp" title="上级目录 (Alt+↑)">${icon('arrow-up', 16)}</button>
-        <button id="explorerRefresh" title="刷新 (F5)">${icon('refresh-cw', 16)}</button>
-        <div id="explorerPath" class="explorer-path"></div>
-        <button id="explorerNewFolder" title="新建文件夹 (Ctrl+N)">${icon('folder-plus', 16)}</button>
-        <button id="explorerDelete" title="删除 (Delete)">${icon('trash-2', 16)}</button>
-        <button id="explorerRename" title="重命名 (F2)">${icon('pencil', 16)}</button>
-        <button id="explorerSelectAll" title="全选 (Ctrl+A)">${icon('check-square', 16)}</button>
-      </div>
-      <div class="explorer-body">
-        <div id="explorerSidebar" class="explorer-sidebar">
-          <div class="sidebar-header">导航</div>
-          <div id="explorerTree"></div>
-        </div>
-        <div id="explorerContent" class="explorer-content"></div>
-      </div>
-    `;
-    const fileArea = document.querySelector('.file-area');
-    fileArea?.appendChild(newContainer);
+  if (currentViewMode === VIEW_MODES.EXPLORER) {
+    if (classicPanel) classicPanel.style.display = 'none';
+    if (!explorerContainer) createExplorerView();
+    if (explorerContainer) explorerContainer.style.display = 'flex';
+  } else {
+    if (classicPanel) classicPanel.style.display = 'flex';
+    if (explorerContainer) explorerContainer.style.display = 'none';
   }
+}
 
-  // 绑定工具栏事件
+function createExplorerView() {
+  const container = document.createElement('div');
+  container.id = 'explorerContainer';
+  container.className = 'explorer-container';
+  container.innerHTML = `
+    <div class="explorer-toolbar">
+      <button id="explorerOpenFolder" title="打开文件夹">${icon('folder-open', 16)}</button>
+      <button id="explorerBack" title="后退" disabled>${icon('chevron-left', 16)}</button>
+      <button id="explorerForward" title="前进" disabled>${icon('chevron-right', 16)}</button>
+      <button id="explorerUp" title="上级目录">${icon('arrow-up', 16)}</button>
+      <button id="explorerRefresh" title="刷新">${icon('refresh-cw', 16)}</button>
+      <div id="explorerPath" class="explorer-path">未选择文件夹</div>
+      <button id="explorerNewFolder" title="新建文件夹">${icon('folder-plus', 16)}</button>
+      <button id="explorerDelete" title="删除">${icon('trash-2', 16)}</button>
+      <button id="explorerRename" title="重命名">${icon('pencil', 16)}</button>
+      <button id="explorerSelectAll" title="全选">${icon('check-square', 16)}</button>
+    </div>
+    <div class="explorer-body">
+      <div id="explorerSidebar" class="explorer-sidebar">
+        <div class="sidebar-header">导航</div>
+        <div id="explorerTree"></div>
+      </div>
+      <div id="explorerContent" class="explorer-content"></div>
+    </div>
+  `;
+
+  const fileArea = document.querySelector('.file-area');
+  fileArea?.appendChild(container);
+
+  // 绑定事件
+  $('explorerOpenFolder')?.addEventListener('click', openExplorerFolder);
   $('explorerBack')?.addEventListener('click', explorerBack);
   $('explorerForward')?.addEventListener('click', explorerForward);
   $('explorerUp')?.addEventListener('click', explorerUp);
@@ -87,89 +102,145 @@ function showExplorerView() {
   $('explorerRename')?.addEventListener('click', explorerRename);
   $('explorerSelectAll')?.addEventListener('click', explorerSelectAll);
 
-  // 添加键盘快捷键
+  // 键盘快捷键
   setupExplorerKeys();
 
-  // 加载当前目录
-  loadExplorerPath(currentPath || '/');
+  // 同步数据
+  syncExplorerData();
 }
 
-function showClassicView() {
-  const classicPanel = document.querySelector('.transfer-container');
-  if (classicPanel) classicPanel.style.display = 'flex';
-  const container = document.getElementById('explorerContainer');
-  if (container) container.style.display = 'none';
-}
-
-async function loadExplorerPath(dirPath) {
+// 打开文件夹（共享 API）
+export async function openExplorerFolder() {
   const win = window.electronAPI;
-  if (!win || !win.isElectron) {
-    toast('文件资源管理器模式仅支持桌面应用', 'error');
+
+  // Electron 环境
+  if (win && win.isElectron) {
+    try {
+      const result = await win.openFolder();
+      if (result.canceled || !result.filePaths.length) return;
+
+      const dirPath = result.filePaths[0];
+      await win.setWorkspace(dirPath);
+
+      // 读取文件夹内容
+      const res = await win.readDir(dirPath);
+      if (!res.success) {
+        toast('读取文件夹失败：' + res.error, 'error');
+        return;
+      }
+
+      // 递归读取所有文件
+      const files = [];
+      await readDirRecursive(dirPath, files, win);
+
+      if (files.length === 0) {
+        toast('文件夹中没有可添加的文件', 'warning');
+        return;
+      }
+
+      // 添加到左侧列表
+      await libraryModule.addFilesToLeft(files);
+      toast(`已从「${dirPath.split(/[/\\]/).pop()}」添加 ${files.length} 个文件`, 'success');
+
+      // 更新资源管理器视图
+      syncExplorerData();
+    } catch (e) {
+      toast('打开文件夹失败：' + (e && e.message ? e.message : '未知错误'), 'error');
+    }
     return;
   }
 
+  // 浏览器环境
+  if (!window.showDirectoryPicker) {
+    toast('当前浏览器不支持文件夹访问，请使用 Chrome/Edge', 'error');
+    return;
+  }
   try {
-    const res = await win.readDir(dirPath);
-    if (!res.success) {
-      toast('读取目录失败：' + res.error, 'error');
-      return;
-    }
-
-    currentPath = dirPath;
-    history = history.slice(0, historyIndex + 1);
-    history.push(dirPath);
-    historyIndex = history.length - 1;
-    updateExplorerUI();
-    renderExplorerContent(res.items);
+    const dirHandle = await window.showDirectoryPicker();
+    toast(`正在读取文件夹「${dirHandle.name}」...`, 'info', 2000);
+    const files = await readDirectoryHandle(dirHandle);
+    if (files.length === 0) return;
+    await libraryModule.addFilesToLeft(files);
+    toast(`已添加 ${files.length} 个文件`, 'success');
+    syncExplorerData();
   } catch (e) {
-    toast('加载目录失败：' + e.message, 'error');
+    if (e.name !== 'AbortError') {
+      toast('打开文件夹失败：' + (e && e.message ? e.message : '未知错误'), 'error');
+    }
   }
 }
 
-function updateExplorerUI() {
-  // 更新路径显示
-  const pathEl = $('explorerPath');
-  if (pathEl) {
-    const displayName = currentPath.split(/[/\\]/).pop() || currentPath;
-    pathEl.innerHTML = icon('folder-open', 14) + ' ' + displayName;
-  }
+async function readDirRecursive(dirPath, files, win) {
+  const res = await win.readDir(dirPath);
+  if (!res.success) return;
 
-  // 更新导航按钮状态
-  $('explorerBack')?.toggleAttribute('disabled', historyIndex <= 0);
-  $('explorerForward')?.toggleAttribute('disabled', historyIndex >= history.length - 1);
+  for (const item of res.items) {
+    if (item.isDirectory) {
+      await readDirRecursive(item.path, files, win);
+    } else {
+      const fileRes = await win.readFile(item.path);
+      if (fileRes.success) {
+        const ext = item.path.split('.').pop()?.toLowerCase();
+        const mimeMap = {
+          jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+          gif: 'image/gif', mp4: 'video/mp4', webm: 'video/webm',
+          txt: 'text/plain', html: 'text/html', json: 'application/json',
+        };
+        files.push({
+          name: item.name,
+          mime: mimeMap[ext] || 'application/octet-stream',
+          arrayBuffer: fileRes.isBinary
+            ? Uint8Array.from(atob(fileRes.content), c => c.charCodeAt(0)).buffer
+            : new TextEncoder().encode(fileRes.content).buffer,
+          filePath: item.path,
+        });
+      }
+    }
+  }
 }
 
-function renderExplorerContent(items) {
+async function readDirectoryHandle(dirHandle, path = '') {
+  const files = [];
+  for await (const entry of dirHandle.values()) {
+    const entryPath = path ? `${path}/${entry.name}` : entry.name;
+    if (entry.kind === 'file') {
+      const file = await entry.getFile();
+      file.webkitRelativePath = entryPath;
+      files.push(file);
+    } else if (entry.kind === 'directory') {
+      const subFiles = await readDirectoryHandle(entry, entryPath);
+      files.push(...subFiles);
+    }
+  }
+  return files;
+}
+
+// 同步资源管理器数据
+function syncExplorerData() {
+  const leftItems = libraryModule.getLeftItems();
   const content = $('explorerContent');
   if (!content) return;
 
   content.innerHTML = '';
 
-  // 按类型排序：文件夹在前
-  const sorted = [...items].sort((a, b) => {
-    if (a.isDirectory && !b.isDirectory) return -1;
-    if (!a.isDirectory && b.isDirectory) return 1;
-    return a.name.localeCompare(b.name);
-  });
-
-  for (const item of sorted) {
+  // 只显示左侧列表（文件库）
+  for (const item of leftItems) {
     const el = document.createElement('div');
-    el.className = 'explorer-item' + (selectedItems.has(item.path) ? ' selected' : '');
-    el.dataset.path = item.path;
-    el.dataset.name = item.name;
+    el.className = 'explorer-item';
+    el.dataset.id = item.id;
+    el.dataset.type = item.isFolder ? 'folder' : 'file';
 
     const iconEl = document.createElement('div');
     iconEl.className = 'explorer-item-icon';
-    if (item.isDirectory) {
+    if (item.isFolder) {
       iconEl.innerHTML = icon('folder', 32);
       iconEl.style.color = 'var(--code-blue)';
     } else {
-      const ext = item.path.split('.').pop()?.toLowerCase();
+      const ext = item.filePath?.split('.').pop()?.toLowerCase() || '';
       const iconMap = {
         jpg: 'image', jpeg: 'image', png: 'image', gif: 'image',
         mp4: 'film', webm: 'film', avi: 'film',
         txt: 'file-text', html: 'code', js: 'code', json: 'file-text',
-        zip: 'archive', rar: 'archive', '7z': 'archive',
       };
       iconEl.innerHTML = icon(iconMap[ext] || 'file', 32);
     }
@@ -182,25 +253,11 @@ function renderExplorerContent(items) {
     el.appendChild(iconEl);
     el.appendChild(nameEl);
 
-    // 点击选中
-    el.onclick = (e) => {
-      if (e.ctrlKey) {
-        toggleSelect(item.path);
-      } else if (e.shiftKey) {
-        rangeSelect(item.path);
-      } else {
-        selectedItems.clear();
-        selectedItems.add(item.path);
-        renderExplorerContent(items);
-      }
-    };
-
-    // 双击打开
+    // 双击添加到待加密列表
     el.ondblclick = () => {
-      if (item.isDirectory) {
-        loadExplorerPath(item.path);
-      } else {
-        addToLibrary(item.path);
+      if (!item.isFolder) {
+        libraryModule.moveToRight(item.id);
+        toast(`已添加「${item.name}」到待加密列表`);
       }
     };
 
@@ -208,59 +265,11 @@ function renderExplorerContent(items) {
   }
 }
 
-function toggleSelect(path) {
-  if (selectedItems.has(path)) {
-    selectedItems.delete(path);
-  } else {
-    selectedItems.add(path);
-  }
-  renderExplorerContent(getCurrentItems());
-}
-
-function rangeSelect(path) {
-  // 简化实现：添加所有选中
-  selectedItems.add(path);
-  renderExplorerContent(getCurrentItems());
-}
-
-function getCurrentItems() {
-  // 简化：从 DOM 读取
-  const content = $('explorerContent');
-  if (!content) return [];
-  return Array.from(content.children).map(el => ({
-    path: el.dataset.path,
-    name: el.dataset.name,
-    isDirectory: false,
-  }));
-}
-
 // 导航操作
-function explorerBack() {
-  if (historyIndex > 0) {
-    historyIndex--;
-    loadExplorerPath(history[historyIndex]);
-  }
-}
-
-function explorerForward() {
-  if (historyIndex < history.length - 1) {
-    historyIndex++;
-    loadExplorerPath(history[historyIndex]);
-  }
-}
-
-function explorerUp() {
-  const parts = currentPath.split(/[/\\]/);
-  if (parts.length > 1) {
-    parts.pop();
-    loadExplorerPath(parts.join('/'));
-  }
-}
-
-function explorerRefresh() {
-  loadExplorerPath(currentPath);
-}
-
+function explorerBack() {}
+function explorerForward() {}
+function explorerUp() {}
+function explorerRefresh() { syncExplorerData(); }
 async function explorerNewFolder() {
   const { value } = await Swal.fire({
     title: '新建文件夹',
@@ -269,24 +278,18 @@ async function explorerNewFolder() {
     showCancelButton: true,
     confirmButtonText: '创建',
     cancelButtonText: '取消',
-    inputValidator: (v) => (v && v.trim()) ? null : '文件夹名不能为空',
   });
-
   if (value) {
-    const win = window.electronAPI;
-    const newPath = currentPath.replace(/[/\\]$/, '') + '/' + value;
-    await win.writeFile(newPath, '', false); // 创建空文件作为占位
+    libraryModule.createFolder(value);
+    syncExplorerData();
     toast('文件夹已创建');
-    explorerRefresh();
   }
 }
-
 function explorerDelete() {
   if (selectedItems.size === 0) {
     toast('请先选择要删除的项目', 'warning');
     return;
   }
-
   Swal.fire({
     title: '确认删除',
     text: `确定要删除选中的 ${selectedItems.size} 个项目吗？`,
@@ -296,142 +299,65 @@ function explorerDelete() {
     cancelButtonText: '取消',
   }).then(async (res) => {
     if (res.isConfirmed) {
-      for (const p of selectedItems) {
-        // 实际删除需要更多实现
-        console.log('删除:', p);
+      for (const id of selectedItems) {
+        libraryModule.removeItem(id);
       }
       selectedItems.clear();
+      syncExplorerData();
       toast('已删除', 'success');
-      explorerRefresh();
     }
   });
 }
-
 async function explorerRename() {
   if (selectedItems.size !== 1) {
     toast('请选择一个项目重命名', 'warning');
     return;
   }
-
-  const path = Array.from(selectedItems)[0];
-  const oldName = path.split(/[/\\]/).pop();
-
+  const id = Array.from(selectedItems)[0];
+  const item = [...libraryModule.getLeftItems(), ...libraryModule.getRightItems()].find(i => i.id === id);
+  if (!item) return;
   const { value } = await Swal.fire({
     title: '重命名',
     input: 'text',
-    inputValue: oldName,
+    inputValue: item.name,
     showCancelButton: true,
     confirmButtonText: '确定',
     cancelButtonText: '取消',
-    inputValidator: (v) => (v && v.trim()) ? null : '名称不能为空',
   });
-
-  if (value && value !== oldName) {
-    // dir 待使用
+  if (value && value !== item.name) {
+    libraryModule.renameItem(id, value);
+    syncExplorerData();
     toast('已重命名');
-    explorerRefresh();
   }
 }
-
 function explorerSelectAll() {
   const content = $('explorerContent');
   if (!content) return;
   content.querySelectorAll('.explorer-item').forEach(el => {
-    selectedItems.add(el.dataset.path);
+    selectedItems.add(parseInt(el.dataset.id));
   });
-  renderExplorerContent(getCurrentItems());
+  renderExplorerSelection();
 }
 
 function setupExplorerKeys() {
   document.addEventListener('keydown', (e) => {
-    if (explorerView !== 'explorer') return;
-
-    // 阻止默认行为（如果在资源管理器模式）
-    const keys = ['F5', 'F2', 'Delete'];
-    if (keys.includes(e.key)) {
-      e.preventDefault();
-    }
-
+    if (currentViewMode !== VIEW_MODES.EXPLORER) return;
     switch (e.key) {
-      case 'F5':
-        explorerRefresh();
-        break;
       case 'Delete':
-        if (document.activeElement.tagName !== 'INPUT') {
-          explorerDelete();
-        }
-        break;
-      case 'F2':
-        if (selectedItems.size === 1) {
-          explorerRename();
-        }
+        if (document.activeElement.tagName !== 'INPUT') explorerDelete();
         break;
       case 'a':
-        if (e.ctrlKey) {
-          e.preventDefault();
-          explorerSelectAll();
-        }
-        break;
-      case 'ArrowLeft':
-        if (e.altKey) explorerBack();
-        break;
-      case 'ArrowRight':
-        if (e.altKey) explorerForward();
-        break;
-      case 'ArrowUp':
-        if (e.altKey) {
-          e.preventDefault();
-          explorerUp();
-        }
+        if (e.ctrlKey) { e.preventDefault(); explorerSelectAll(); }
         break;
     }
   });
 }
 
-async function addToLibrary(filePath) {
-  const win = window.electronAPI;
-  const res = await win.readFile(filePath);
-  if (!res.success) {
-    toast('读取文件失败：' + res.error, 'error');
-    return;
-  }
+let selectedItems = new Set();
 
-  // 转换文件并添加到左侧列表
-  const ext = filePath.split('.').pop()?.toLowerCase();
-  const mimeMap = {
-    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
-    gif: 'image/gif', mp4: 'video/mp4', webm: 'video/webm',
-    txt: 'text/plain', html: 'text/html', json: 'application/json',
-  };
-
-  const item = {
-    id: nextId++,
-    name: filePath.split(/[/\\]/).pop(),
-    mime: mimeMap[ext] || 'application/octet-stream',
-    dataUrl: null,
-    arrayBuffer: res.isBinary
-      ? Uint8Array.from(atob(res.content), c => c.charCodeAt(0)).buffer
-      : new TextEncoder().encode(res.content).buffer,
-    hashHex: '',
-    filePath: filePath,
-  };
-
-  libraryModule.addFileToLeft({
-    ...item,
-    arrayBuffer: res.isBinary
-      ? Uint8Array.from(atob(res.content), c => c.charCodeAt(0)).buffer
-      : new TextEncoder().encode(res.content).buffer,
+function renderExplorerSelection() {
+  document.querySelectorAll('.explorer-item').forEach(el => {
+    const id = parseInt(el.dataset.id);
+    el.classList.toggle('selected', selectedItems.has(id));
   });
-  toast(`已添加「${item.name}」到文件库`);
-}
-
-// 导出状态
-export function getExplorerState() {
-  return {
-    view: explorerView,
-    path: currentPath,
-    history,
-    historyIndex,
-    selected: Array.from(selectedItems),
-  };
 }
