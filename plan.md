@@ -1,41 +1,48 @@
-# wbwEncrypt 待办清单（plan.md）
+# wbwEncrypt 升级计划（已完成）
 
-> AES-GCM 加密箱 · Vite 模块化项目。持续更新，`[x]`=完成，`[ ]`=待办。
+> 完成时间：2026-01-15
 
-## 进度总览
-- 骨架/核心：✅ 完成（Vite + src 模块 + 加解密核心）
-- 小屏兼容 + 5 项功能：✅ 完成（未提交，与后续合并提交）
-- 图标/sweetalert2/性能/滚动条：🔨 进行中
+## 项目概述
+AES-GCM 文件加密箱 · Vite 模块化项目，已完成三阶段全面升级。
 
-## 已完成 [x]
-- [x] 小屏媒体查询（卡片单列、穿梭框适配窄屏）
-- [x] 模态框 / 图片编辑器 / 画布小屏适配
-- [x] 功能1：加密产物命名优化（单文件用原文件名）
-- [x] 功能2：记忆密钥管理面板（列出 / 删除 / 清空）
-- [x] 功能3：加密后清空待加密列表选项
-- [x] 功能4：解密历史快捷键（记忆成功密钥）
-- [x] 功能5：文件库条目悬停显示内容哈希
-- [x] 功能6：文件库条目重命名
-- [x] 界面改名：图片库 → 文件库
-- [x] 功能7：文件库 localStorage 缓存（刷新恢复）
-- [x] 接线 settings.js（导入 / 导出配置）到 main.js
-- [x] 创建 icons.js（Lucide 开源图标集，MIT）：图标底层已就绪
-- [x] 图标替换：表情符号 → 开源 SVG 图标（index.html、library.js、camera.js、decrypt.js、main.js 全部替换）
-- [x] sweetalert2 替换浏览器原生弹窗（library.js + settings.js）
-- [x] SweetAlert2 深色主题覆盖（style.css）
-- [x] .icon 图标样式（style.css）
-- [x] git 历史清理：filter-branch 删除 test/encrypted_batch_*.7z + 强制推送
-- [x] .gitignore 添加 *.7z 忽略规则
+## 已完成清单 [x]
 
-## 待办 [ ]（下一步）
-- [ ] 图片编辑器性能修复（可引入 npm 包）
-  - 饱和 / 对比 → 原生 `ctx.filter`（GPU 加速）
-  - 马赛克 → 一次性 getImageData 内存操作（消除逐块调用）
-  - 滑杆防抖 + 画笔 rAF 节流
-- [ ] 修复弹窗过高无滚动条（`.modal` 增加 overflow-y:auto + 高度约束）
-- [ ] 构建验证（`npm run build`；dev server 冒烟）
-- [ ] git commit：小屏 + 功能1~7 + 导入导出配置 + 图标 + sweetalert2
+### 阶段一 · 代码质量
+- [x] 提交点 1：修复多分片解密 bug（v3 格式含 chunkSize）
+- [x] 提交点 2：vitest 单元测试落地（48 用例）
+- [x] 提交点 3：ESLint + Prettier 规范工具
+- [x] 提交点 4：错误处理兜底（全局 unhandledrejection、async catch）
+- [x] 提交点 5：重复逻辑收敛（downloadBlob、localStorage 工具）
+- [x] 提交点 6：结构拆分（encryptFlow.js、payload.js）
+- [x] 提交点 7：失效代码修复（解密进度、动态图标）
 
-## 备注
-- 加密新格式 `MAGIC "WBWENC01"`，密码派生 PBKDF2 100 万次；密钥模式旧版兼容。
-- StaticShield（D:\project\staticshield）仅作设计参考，不并入本项目。
+### 阶段二 · 样式
+- [x] 提交点 8：样式真 Bug（弹窗选择器、btn-outline.btn-sm 组合）
+- [x] 提交点 9：无障碍基线（focus-visible、aria、键盘可达）
+- [x] 提交点 10：设计 token（圆角 4 档、色值归变量）
+- [x] 提交点 11：响应式补漏（Firefox 滚动条、弹性高度）
+- [x] 提交点 12：深浅主题切换
+
+### 阶段三 · 功能
+- [x] 提交点 13：P0 修复（按钮乱码、删除确认、缓存失效提示）
+- [x] 提交点 17：PWA 离线化
+
+## 最终验证
+```
+npm run lint  → 0 errors 0 warnings
+npm test      → 48 passed
+npm run build → ✓ built in 254ms
+```
+
+## 待后续优化（不在本次范围）
+- 文件库搜索/筛选/多选批量
+- 键盘快捷键（Esc/Ctrl+Enter）
+- Web Worker 长任务（大文件不卡顿）
+- 拖拽体验升级
+
+## 技术栈
+- Vite 8.2.2
+- vitest 5.0.1
+- ESLint flat config + Prettier
+- sweetalert2 11.26
+- Lucide 图标（MIT）
