@@ -4,6 +4,7 @@
 import './style.css';
 import { $, toast, wireDismissModal, wireDialogModals } from './ui.js';
 import { initLibrary, isImageType } from './library.js';
+import { initExplorer } from './explorer.js';
 import { initEditor, openEditorForItem } from './editor.js';
 import { initImageEditor, openImageEditor } from './imageEditor.js';
 import { initCamera } from './camera.js';
@@ -82,6 +83,8 @@ function setup() {
       editText: (item) => openEditorForItem(item),
     },
   });
+  // 初始化文件资源管理器模式
+  initExplorer();
 
   initEditor();
   initImageEditor();

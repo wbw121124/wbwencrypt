@@ -86,8 +86,8 @@ input[type="file"].visually-hidden{position:absolute;width:1px;height:1px;paddin
 .transfer-list{scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
 .transfer-item{display:flex;align-items:center;gap:8px;padding:6px;margin-bottom:6px;background:var(--bg-editor);border-radius:0.8rem;cursor:pointer;border:1px solid var(--border);tab-index:0;}
 .transfer-item:hover{border-color:var(--focus);background:var(--selection-soft);}
-.transfer-item img{width:40px;height:40px;object-fit:cover;border-radius:6px;}
-.transfer-item .doc-icon{font-size:28px;min-width:40px;text-align:center;}
+.transfer-item img{width:40px;height:40px;object-fit:cover;border-radius:6px;user-select:none;-webkit-user-drag:none;}
+.transfer-item .doc-icon{font-size:28px;min-width:40px;text-align:center;user-select:none;}
 .transfer-item span{flex:1;font-size:0.7rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 /* 文件夹样式 */
 .transfer-folder{border:1px solid var(--border);border-radius:var(--r-md);margin-bottom:6px;overflow:hidden;}

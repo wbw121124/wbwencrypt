@@ -585,27 +585,24 @@ export function render() {
       targetIndex = e.clientY < midY ? idx : idx + 1;
     }
 
-    // 排除源自身
-    if (sourceList === (targetIsRight ? 'right' : 'left') && sourceIndex === targetIndex - 1) return;
-
-    // 从源列表移除
-    const sourceItems = sourceList === 'right' ? rightItems : leftItems;
-    const [movedItem] = sourceItems.splice(sourceIndex, 1);
-    if (!movedItem) return;
-
-    // 插入到目标列表
+    // 同列表内移动（排除源自身）
     if (sourceList === (targetIsRight ? 'right' : 'left')) {
-      // 同列表内移动，调整索引
+      if (sourceIndex === targetIndex) return;
       if (sourceIndex < targetIndex) targetIndex--;
-      targetItems.splice(targetIndex, 0, movedItem);
-    } else {
-      // 跨列表移动
-      if (targetIsRight) moveToRight(movedItem.id);
-      else moveToLeft(movedItem.id);
+      const sourceItems = sourceList === 'right' ? rightItems : leftItems;
+      const item = sourceItems[sourceIndex];
+      if (!item) return;
+      sourceItems.splice(sourceIndex, 1);
+      targetItems.splice(targetIndex, 0, item);
+      render();
       return;
     }
 
-    render();
+    // 跨列表移动
+    const moved = [...leftItems, ...rightItems].find(i => i.id === sourceId);
+    if (!moved) return;
+    if (targetIsRight) moveToRight(sourceId);
+    else moveToLeft(sourceId);
   }
 
   // 绑定事件（使用事件委托）
