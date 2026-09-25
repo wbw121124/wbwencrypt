@@ -328,10 +328,8 @@ async function explorerRename() {
   });
 
   if (value && value !== oldName) {
-    const win = window.electronAPI;
     const dir = path.replace(/[/\\][^/\\]*$/, '');
-    const newPath = dir + '/' + value;
-    // 重命名实现...
+    // newPath 待实现
     toast('已重命名');
     explorerRefresh();
   }
