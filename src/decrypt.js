@@ -162,7 +162,7 @@ export function initDecrypt() {
     nameSpan.innerText = e.target.files.length ? e.target.files[0].name : '未选择文件';
     preview.innerHTML = ''; verifyMsg.innerHTML = '';
     releasePreviewUrls(); // 换文件即回收上一结果的预览 URL
-    badge.className = 'status-badge'; badge.innerText = '等待解密';
+    badge.className = 'status-badge'; badge.innerHTML = '等待解密';
   });
 
   $('decryptBtn').onclick = async () => {
@@ -171,7 +171,7 @@ export function initDecrypt() {
     if (!inputStr) { toast('请输入密钥或密码', 'error'); return; }
     const usePassword = $('decryptUsePassword').checked;
     const btn = $('decryptBtn');
-    badge.innerText = '🔍 解密验证...'; badge.className = 'status-badge';
+    badge.innerHTML = '🔍 解密验证...'; badge.className = 'status-badge';
     verifyMsg.innerHTML = ''; preview.innerHTML = ''; preview.style.display = 'none';
     btn.disabled = true; buttonProgress(btn, '⏳ 解密中...');
     try {
