@@ -495,11 +495,16 @@ export function render() {
       } else {
         el = makeTransferItem(item, isRight, getItemActions());
       }
-      el.draggable = true;
-      el.dataset.id = item.id;
-      el.dataset.type = item.isFolder ? 'folder' : 'file';
-      el.dataset.index = i;
-      el.dataset.list = isRight ? 'right' : 'left';
+      if (!el) continue;
+      try { el.draggable = true; } catch (e) {}
+      try {
+        if (el.dataset) {
+          el.dataset.id = item.id;
+          el.dataset.type = item.isFolder ? 'folder' : 'file';
+          el.dataset.index = i;
+          el.dataset.list = isRight ? 'right' : 'left';
+        }
+      } catch (e) {}
       container.appendChild(el);
     }
   }
