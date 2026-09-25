@@ -133,7 +133,7 @@ export function downloadBlob(name, blob) {
 }
 
 // ---- 拖拽高亮辅助（支持文件夹：webkitGetAsEntry）----
-export function wireDragDrop(zoneId, onFiles, options = {}) {
+export function wireDragDrop(zoneId, onFiles) {
   const zone = document.getElementById(zoneId);
   if (!zone) return;
   const hint = zone.querySelector('#dropHint');
