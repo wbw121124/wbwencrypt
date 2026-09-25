@@ -80,7 +80,7 @@ input[type="file"].visually-hidden{position:absolute;width:1px;height:1px;paddin
 :root{--text-sec:#9d9d9d;}
 .transfer-container{display:flex;gap:1rem;flex-wrap:wrap;margin-top:0.5rem;}
 .transfer-panel{flex:1;background:var(--bg-editor);border-radius:1.2rem;padding:0.8rem;border:1px solid var(--border);}
-.transfer-list{min-height:280px;max-height:300px;overflow-y:auto;background:var(--bg-side);border-radius:1rem;padding:6px;}
+.transfer-list{min-height:400px;max-height:500px;overflow-y:auto;background:var(--bg-side);border-radius:1rem;padding:6px;}
 .transfer-list::-webkit-scrollbar{width:8px;}
 .transfer-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
 .transfer-list{scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
