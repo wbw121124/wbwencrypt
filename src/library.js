@@ -302,18 +302,56 @@ function makeTransferItem(item, isRight, actions) {
     iconEl.innerHTML = isVideoType(item.mime) ? icon('film', 30) : icon('file', 30);
     div.appendChild(iconEl);
   }
-  const span = document.createElement('span'); span.innerText = item.name; div.appendChild(span);
-  const btnGroup = document.createElement('div'); btnGroup.style.display = 'flex'; btnGroup.style.gap = '4px';
+  const span = document.createElement('span');
+  span.innerText = item.name;
+  span.title = item.name; // 悬停显示完整名称
+  div.appendChild(span);
+
+  // 三点菜单
+  const menuWrapper = document.createElement('div');
+  menuWrapper.className = 'action-menu';
+
+  const menuBtn = document.createElement('button');
+  menuBtn.className = 'action-menu-btn';
+  menuBtn.title = '操作菜单';
+  menuBtn.innerHTML = icon('more-vertical', 18);
+  menuWrapper.appendChild(menuBtn);
+
+  const dropdown = document.createElement('div');
+  dropdown.className = 'action-menu-dropdown';
+
+  // 构建菜单项
   for (const a of actions) {
-    const b = document.createElement('button');
-    b.innerHTML = a.icon || a.label; b.className = 'btn-sm'; b.title = a.title || '';
-    b.style.display = 'inline-flex'; b.style.alignItems = 'center'; b.style.justifyContent = 'center';
-    b.style.padding = '0.3rem 0.5rem';
-    b.onclick = (e) => { e.stopPropagation(); a.onclick(item, e); };
-    btnGroup.appendChild(b);
+    if (a.separator) {
+      const sep = document.createElement('div');
+      sep.className = 'action-menu-separator';
+      dropdown.appendChild(sep);
+    } else {
+      const menuItem = document.createElement('div');
+      menuItem.className = 'action-menu-item' + (a.danger ? ' danger' : '');
+      menuItem.innerHTML = (a.icon || '') + ' ' + a.label;
+      menuItem.onclick = (e) => {
+        e.stopPropagation();
+        dropdown.classList.remove('show');
+        a.onclick(item, e);
+      };
+      dropdown.appendChild(menuItem);
+    }
   }
-  div.appendChild(btnGroup);
-  div.onclick = (e) => { if (btnGroup.contains(e.target)) return; isRight ? moveToLeft(item.id) : moveToRight(item.id); };
+  menuWrapper.appendChild(dropdown);
+  div.appendChild(menuWrapper);
+
+  // 点击菜单外关闭
+  menuBtn.onclick = (e) => {
+    e.stopPropagation();
+    dropdown.classList.toggle('show');
+  };
+
+  div.onclick = (e) => {
+    if (menuWrapper.contains(e.target)) return;
+    isRight ? moveToLeft(item.id) : moveToRight(item.id);
+  };
+
   return div;
 }
 
@@ -512,41 +550,35 @@ export function registerActions(hooks) { Object.assign(actionHooks, hooks); }
 
 function getItemActions() {
   const actions = [];
-  if (actionHooks.editImage) actions.push({ icon: icon('image'), title: '编辑图片', onclick: (item) => actionHooks.editImage(item) });
-  if (actionHooks.editText) actions.push({ icon: icon('file-text'), title: '编辑文本', onclick: (item) => { if (isEditableType(item.mime, item.name)) actionHooks.editText(item); } });
-  // 功能6：重命名（sweetalert2 输入框）
-  actions.push({
-    icon: icon('pencil'), title: '重命名',
-    onclick: async (item) => {
-      const { value } = await Swal.fire({
-        title: '重命名文件',
-        input: 'text',
-        inputValue: item.name,
-        showCancelButton: true,
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        inputValidator: (v) => (v && v.trim()) ? null : '文件名不能为空',
-      });
-      if (value && renameItem(item.id, value)) toast('已重命名');
-    },
-  });
-  actions.push({
-    icon: icon('trash-2'), title: '删除',
-    onclick: async (item) => {
-      const res = await Swal.fire({
-        title: '确认删除',
-        text: `确定要删除「${item.name}」吗？`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: '删除',
-        cancelButtonText: '取消',
-      });
-      if (res.isConfirmed) {
-        removeItem(item.id);
-        toast('已删除', 'success');
-      }
-    },
-  });
+  if (actionHooks.editImage) actions.push({ icon: icon('image', 14), label: '编辑图片', onclick: (item) => actionHooks.editImage(item) });
+  if (actionHooks.editText) actions.push({ icon: icon('file-text', 14), label: '编辑文本', onclick: (item) => { if (isEditableType(item.mime, item.name)) actionHooks.editText(item); } });
+  actions.push({ icon: icon('pencil', 14), label: '重命名', onclick: async (item) => {
+    const { value } = await Swal.fire({
+      title: '重命名文件',
+      input: 'text',
+      inputValue: item.name,
+      showCancelButton: true,
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      inputValidator: (v) => (v && v.trim()) ? null : '文件名不能为空',
+    });
+    if (value && renameItem(item.id, value)) toast('已重命名');
+  }});
+  actions.push({ separator: true });
+  actions.push({ icon: icon('trash-2', 14), label: '删除', danger: true, onclick: async (item) => {
+    const res = await Swal.fire({
+      title: '确认删除',
+      text: `确定要删除「${item.name}」吗？`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+    });
+    if (res.isConfirmed) {
+      removeItem(item.id);
+      toast('已删除', 'success');
+    }
+  }});
   return actions;
 }
 

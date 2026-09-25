@@ -88,7 +88,7 @@ input[type="file"].visually-hidden{position:absolute;width:1px;height:1px;paddin
 .transfer-item:hover{border-color:var(--focus);background:var(--selection-soft);}
 .transfer-item img{width:40px;height:40px;object-fit:cover;border-radius:6px;}
 .transfer-item .doc-icon{font-size:28px;min-width:40px;text-align:center;}
-.transfer-item span{flex:1;font-size:0.7rem;word-break:break-all;}
+.transfer-item span{flex:1;font-size:0.7rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 /* 文件夹样式 */
 .transfer-folder{border:1px solid var(--border);border-radius:var(--r-md);margin-bottom:6px;overflow:hidden;}
 .transfer-folder-header{display:flex;align-items:center;gap:4px;padding:8px;background:var(--bg-activity);cursor:pointer;transition:background .15s;}
@@ -105,7 +105,19 @@ input[type="file"].visually-hidden{position:absolute;width:1px;height:1px;paddin
 .view-grid .transfer-item .btn-group{display:none;}
 .view-list .transfer-item{flex-direction:row;}
 .view-details .transfer-item{display:grid;grid-template-columns:40px 1fr 80px 60px;align-items:center;gap:8px;}
+.view-details .transfer-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .view-details .transfer-item .btnGroup{display:flex;}
+/* 三点菜单 */
+.action-menu{position:relative;display:inline-block;}
+.action-menu-btn{background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:4px;color:var(--text);display:flex;align-items:center;}
+.action-menu-btn:hover{background:var(--selection-soft);}
+.action-menu-dropdown{display:none;position:absolute;right:0;top:100%;background:var(--card-bg);border:1px solid var(--border);border-radius:var(--r-md);min-width:140px;z-index:1000;box-shadow:0 4px 12px var(--shadow);overflow:hidden;}
+.action-menu-dropdown.show{display:block;}
+.action-menu-item{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;font-size:0.8rem;color:var(--text);transition:background .15s;}
+.action-menu-item:hover{background:var(--selection-soft);}
+.action-menu-item.danger{color:var(--red-err);}
+.action-menu-item.danger:hover{background:rgba(244,135,113,0.1);}
+.action-menu-separator{height:1px;background:var(--border);margin:4px 0;}
 .transfer-buttons{display:flex;flex-direction:column;justify-content:center;gap:8px;}
 .transfer-buttons button{background:var(--accent);border:none;border-radius:2rem;padding:6px 12px;color:#fff;cursor:pointer;font-weight:bold;transition:background .15s;}
 .transfer-buttons button:hover{background:var(--accent-hover);}
