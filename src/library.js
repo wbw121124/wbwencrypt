@@ -304,9 +304,24 @@ export function initLibrary({ hooks }) {
   registerActions(hooks);
   const addBtn = $('addFilesBtn');
   addBtn.addEventListener('change', (e) => {
+    if (!e.target.files.length) return;
     addFilesToLeft(e.target.files)
+      .then(() => toast(`已添加 ${e.target.files.length} 个文件`))
       .catch((err) => toast('添加文件失败：' + (err && err.message ? err.message : '未知错误'), 'error'))
       .finally(() => { e.target.value = ''; });
+  });
+  // 文件夹选择（webkitdirectory）
+  const folderBtn = $('addFolderBtn');
+  folderBtn.addEventListener('change', async (e) => {
+    if (!e.target.files.length) return;
+    const files = Array.from(e.target.files);
+    toast(`正在读取文件夹 ${files[0].webkitRelativePath.split('/')[0]}...`, 'info', 1500);
+    try {
+      await addFilesToLeft(files);
+      toast(`已添加 ${files.length} 个文件`, 'success');
+    } catch (err) {
+      toast('添加文件夹失败：' + (err && err.message ? err.message : '未知错误'), 'error');
+    } finally { e.target.value = ''; }
   });
   $('toRightBtn').onclick = () => { if (leftItems.length) moveToRight(leftItems[0].id); };
   $('toLeftBtn').onclick = () => { if (rightItems.length) moveToLeft(rightItems[0].id); };
