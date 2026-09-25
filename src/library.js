@@ -601,25 +601,25 @@ export async function openLocalFolder() {
         return;
       }
 
-      // 转换文件条目为 library 格式
+      // 递归读取所有文件和文件夹
       const files = [];
-      for (const item of res.items) {
-        if (item.isDirectory) {
-          // 递归读取子文件夹
-          const subRes = await win.readDir(item.path);
-          if (subRes.success) {
-            for (const subItem of subRes.items) {
-              if (!subItem.isDirectory) {
-                const file = await readFileFromPath(subItem.path);
-                if (file) files.push(file);
-              }
-            }
+      async function readDirRecursive(dirPath) {
+        const res = await win.readDir(dirPath);
+        if (!res.success) {
+          console.error('读取目录失败:', res.error);
+          return;
+        }
+        for (const item of res.items) {
+          if (item.isDirectory) {
+            // 递归读取子文件夹
+            await readDirRecursive(item.path);
+          } else {
+            const file = await readFileFromPath(item.path);
+            if (file) files.push(file);
           }
-        } else {
-          const file = await readFileFromPath(item.path);
-          if (file) files.push(file);
         }
       }
+      await readDirRecursive(dirPath);
 
       if (files.length === 0) {
         toast('文件夹中没有可添加的文件', 'warning');
@@ -661,12 +661,31 @@ async function readFileFromPath(filePath) {
     if (!res.success) return null;
 
     const ext = path.extname(filePath).toLowerCase();
+    // 更全面的 MIME 类型映射
     const mimeMap = {
+      // 图片
       '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
       '.gif': 'image/gif', '.bmp': 'image/bmp', '.webp': 'image/webp',
+      '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.tiff': 'image/tiff',
+      // 视频
       '.mp4': 'video/mp4', '.webm': 'video/webm', '.avi': 'video/x-msvideo',
-      '.html': 'text/html', '.htm': 'text/html', '.txt': 'text/plain',
-      '.json': 'application/json', '.xml': 'text/xml',
+      '.mov': 'video/quicktime', '.mkv': 'video/x-matroska', '.flv': 'video/x-flv',
+      '.wmv': 'video/x-ms-wmv',
+      // 音频
+      '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg',
+      '.flac': 'audio/flac', '.aac': 'audio/aac', '.m4a': 'audio/mp4',
+      // 文档
+      '.txt': 'text/plain', '.html': 'text/html', '.htm': 'text/html',
+      '.css': 'text/css', '.js': 'application/javascript', '.json': 'application/json',
+      '.xml': 'text/xml', '.md': 'text/markdown', '.pdf': 'application/pdf',
+      // 压缩
+      '.zip': 'application/zip', '.rar': 'application/x-rar-compressed',
+      '.7z': 'application/x-7z-compressed', '.tar': 'application/x-tar',
+      '.gz': 'application/gzip',
+      // Office
+      '.doc': 'application/msword', '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      '.xls': 'application/vnd.ms-excel', '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      '.ppt': 'application/vnd.ms-powerpoint', '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     };
 
     return {
