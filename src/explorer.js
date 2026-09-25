@@ -3,14 +3,15 @@
 // ============================================================================
 import { $, toast } from './ui.js';
 import { icon } from './icons.js';
+import { leftItems, render as libraryRender, nextId as libraryNextId } from './library.js';
 import Swal from 'sweetalert2';
 
-// 状态
 let explorerView = 'classic'; // 'classic' | 'explorer'
 let currentPath = '';
 let history = [];
 let historyIndex = -1;
 let selectedItems = new Set();
+let nextId = libraryNextId;
 
 // 初始化
 export function initExplorer() {
@@ -412,15 +413,15 @@ async function addToLibrary(filePath) {
     name: filePath.split(/[/\\]/).pop(),
     mime: mimeMap[ext] || 'application/octet-stream',
     dataUrl: null,
-    arrayBuffer: res.isBinary 
-      ? Uint8Array.from(atob(res.content), c => c.charCodeAt(0)).buffer 
+    arrayBuffer: res.isBinary
+      ? Uint8Array.from(atob(res.content), c => c.charCodeAt(0)).buffer
       : new TextEncoder().encode(res.content).buffer,
     hashHex: '',
     filePath: filePath,
   };
 
   leftItems.push(item);
-  render();
+  libraryRender();
   toast(`已添加「${item.name}」到文件库`);
 }
 
