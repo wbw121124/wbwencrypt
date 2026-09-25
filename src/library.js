@@ -348,7 +348,7 @@ function makeTransferItem(item, isRight, actions) {
     const isOpen = dropdown.classList.contains('show');
     closeAllMenus();
     if (!isOpen) {
-      showMenu(dropdown, menuBtn);
+      positionMenu(dropdown, menuBtn);
     }
   };
 
@@ -594,6 +594,10 @@ export function render() {
     // 存储源信息
     e.dataTransfer.setData('application/x-source-list', el.dataset.list);
     e.dataTransfer.setData('application/x-source-index', el.dataset.index);
+    // 如果是文件夹，存储文件夹信息
+    if (el.dataset.type === 'folder') {
+      e.dataTransfer.setData('application/x-is-folder', 'true');
+    }
   }
 
   function handleDragEnd() {
@@ -642,8 +646,30 @@ export function render() {
     const sourceId = parseInt(e.dataTransfer.getData('text/plain'));
     const sourceList = e.dataTransfer.getData('application/x-source-list');
     const sourceIndex = parseInt(e.dataTransfer.getData('application/x-source-index'));
+    const isFolderSource = e.dataTransfer.getData('application/x-is-folder') === 'true';
 
     if (isNaN(sourceId)) return;
+
+    // 检查是否拖到文件夹上
+    const dropTarget = e.target.closest('.transfer-item, .transfer-folder');
+    if (dropTarget && dropTarget.dataset.type === 'folder') {
+      const targetFolderId = parseInt(dropTarget.dataset.id);
+      const sourceItems = sourceList === 'right' ? rightItems : leftItems;
+      const sourceItem = sourceItems[sourceIndex];
+      if (sourceItem && targetFolderId !== sourceId) {
+        // 移动到文件夹内
+        addChildToFolder(targetFolderId, sourceItem);
+        if (sourceList === 'right') {
+          rightItems.splice(sourceIndex, 1);
+        } else {
+          const idx = leftItems.indexOf(sourceItem);
+          if (idx !== -1) leftItems.splice(idx, 1);
+        }
+        render();
+        toast(`已移动到「${dropTarget.dataset.name}」`);
+        return;
+      }
+    }
 
     const targetList = e.target.closest('.transfer-list');
     if (!targetList) return;
@@ -654,8 +680,7 @@ export function render() {
     const targetItems = targetIsRight ? rightItems : leftItems;
     let targetIndex = targetItems.length;
 
-    const dropTarget = e.target.closest('.transfer-item, .transfer-folder');
-    if (dropTarget) {
+    if (dropTarget && dropTarget.dataset.type !== 'folder') {
       const idx = parseInt(dropTarget.dataset.index);
       const rect = dropTarget.getBoundingClientRect();
       const midY = rect.top + rect.height / 2;
