@@ -416,8 +416,12 @@ async function addToLibrary(filePath) {
     filePath: filePath,
   };
 
-  leftItems.push(item);
-  libraryModule.render();
+  libraryModule.addFileToLeft({
+    ...item,
+    arrayBuffer: res.isBinary
+      ? Uint8Array.from(atob(res.content), c => c.charCodeAt(0)).buffer
+      : new TextEncoder().encode(res.content).buffer,
+  });
   toast(`已添加「${item.name}」到文件库`);
 }
 
