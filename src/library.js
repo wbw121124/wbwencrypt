@@ -71,15 +71,8 @@ function saveCache() {
   }
 }
 
-// 缓存写入失败时的一次性提示（避免反复刷屏）
-let _cacheFailWarned = false;
-function warnCacheFailOnce() {
-  if (_cacheFailWarned) return;
-  _cacheFailWarned = true;
-  toast('文件库缓存写入失败（存储已满或隐私模式），刷新后文件将不再自动恢复', 'error');
-}
-
-// 回收一组条目的 blob URL（列表被整体替换/删除时调用，避免 URL 泄漏）
+// 缓存是否仍可写（写入真实失败后会永久关闭）——供测试与排障观察
+export function isCacheEnabled() { return cacheEnabled; }
 function revokeItemsUrls(items) {
   for (const it of items) if (it && it.dataUrl) URL.revokeObjectURL(it.dataUrl);
 }
