@@ -11,15 +11,37 @@
 
 // ---- 头部常量 ----
 export const MAGIC = [0x57, 0x42, 0x57, 0x45, 0x4e, 0x43, 0x30, 0x31]; // "WBWENC01"
-export const VERSION = 2;
+// 格式版本：v3 在头部记录 chunkSize（修复多分片解密）；v2 无 chunkSize，仅支持单分片
+export const VERSION = 3;
+export const LEGACY_VERSION = 2;
 
 export const MODE_KEY = 1;          // 密钥模式（raw AES-256 key）
 export const MODE_PASSWORD = 2;     // 密码模式（PBKDF2 派生）
 
 export const SALT_LEN = 16;
 export const IV_LEN = 12;
+export const TAG_LEN = 16;          // AES-GCM 认证标签长度
 export const PBKDF2_ITERATIONS = 1000000; // 对标业界标准（StaticShield 亦为 1,000,000）
 export const DEFAULT_CHUNK_SIZE = 8 * 1024 * 1024; // 8MB / 块
+
+// PBKDF2 迭代次数上下限：防恶意文件用超大迭代次数卡死主线程，也防误传过小值
+export const MIN_PBKDF2_ITERATIONS = 1000;
+export const MAX_PBKDF2_ITERATIONS = 5000000;
+
+// ---- 输入校验（统一抛中文业务错误，避免原生英文异常直达用户）----
+function assertIterations(iterations) {
+  if (!Number.isInteger(iterations)
+    || iterations < MIN_PBKDF2_ITERATIONS
+    || iterations > MAX_PBKDF2_ITERATIONS) {
+    throw new Error(`迭代次数不合法：需在 ${MIN_PBKDF2_ITERATIONS} ~ ${MAX_PBKDF2_ITERATIONS} 之间`);
+  }
+}
+
+function assertChunkSize(chunkSize) {
+  if (!Number.isInteger(chunkSize) || chunkSize <= 0 || chunkSize > 0xffffffff) {
+    throw new Error('分片大小不合法：需为不超过 4GB 的正整数');
+  }
+}
 
 // ---- 字节工具 ----
 export function uint8FromBuffer(buf) {
@@ -140,30 +162,44 @@ export async function encryptBytes(plain, keyInfo, opts = {}) {
   const onProgress = opts.onProgress || (() => {});
   const plainArr = plain instanceof Uint8Array ? plain : uint8FromBuffer(plain);
 
-  // 头部
-  const head = new Uint8Array(MAGIC.length + 1 + 1);
+  // 输入校验
+  if (keyInfo.type !== 'key' && keyInfo.type !== 'password') {
+    throw new Error('不支持的密钥类型：仅支持 key（密钥）或 password（密码）');
+  }
+  assertChunkSize(chunkSize);
+
+  // 头部：MAGIC(8) + version(1) + mode(1)
+  const head = new Uint8Array(MAGIC.length + 2);
   head.set(MAGIC, 0);
   head[MAGIC.length] = VERSION;
   head[MAGIC.length + 1] = keyInfo.type === 'password' ? MODE_PASSWORD : MODE_KEY;
 
   const parts = [head.buffer];
   let key;
+  let usedSalt = null;
 
   if (keyInfo.type === 'password') {
     const salt = keyInfo.salt || randomBytes(SALT_LEN);
     const iterations = keyInfo.iterations || PBKDF2_ITERATIONS;
+    assertIterations(iterations);
     key = await deriveKeyFromPasswordIter(keyInfo.password, salt, iterations);
-    // salt(16) + iter(4)
-    const meta = new Uint8Array(SALT_LEN + 4);
+    usedSalt = salt;
+    // 密码模式元信息：salt(16) + iter(4) + chunkSize(4)，均大端
+    const meta = new Uint8Array(SALT_LEN + 4 + 4);
     meta.set(salt, 0);
     const dv = new DataView(meta.buffer);
     dv.setUint32(SALT_LEN, iterations, false);
+    dv.setUint32(SALT_LEN + 4, chunkSize, false);
     parts.push(meta.buffer);
   } else {
     key = keyInfo.key;
+    // 密钥模式元信息：chunkSize(4)，大端
+    const meta = new Uint8Array(4);
+    new DataView(meta.buffer).setUint32(0, chunkSize, false);
+    parts.push(meta.buffer);
   }
 
-  // 分片数量
+  // 分片数量（与解密侧切分逻辑严格对称：前 n-1 片固定 chunkSize，末片为余数）
   const count = Math.max(1, Math.ceil(plainArr.length / chunkSize));
   const cntBuf = new ArrayBuffer(4);
   new DataView(cntBuf).setUint32(0, count, false);
@@ -184,33 +220,53 @@ export async function encryptBytes(plain, keyInfo, opts = {}) {
   }
 
   const out = concatBuffers(parts);
-  // 跟踪 keyInfo 的 salt（供上层展示/记忆）
-  return { buffer: out, salt: keyInfo.type === 'password' ? keyInfo.salt : null };
+  // 跟踪实际使用的 salt（供上层展示/记忆）
+  return { buffer: out, salt: usedSalt };
 }
 
 /**
- * 解析自描述密文头部。
- * @returns {Object|null} 解析信息；非本工具格式返回 null
+ * 解析自描述密文头部（含输入校验）。
+ * 头部布局（v3）：MAGIC(8) + version(1) + mode(1)
+ *   + [密码模式] salt(16) + iterations(4)
+ *   + chunkSize(4) + count(4)  —— 均大端
+ * v2 布局与 v3 一致，但没有 chunkSize 字段。
+ * @returns {Object|null} 解析信息；MAGIC 不匹配（非本工具格式）返回 null
  */
 export function parseHeader(buf) {
   const u = uint8FromBuffer(buf);
-  if (u.length < MAGIC.length + 2) return null;
+  if (u.length < MAGIC.length) return null;
   for (let i = 0; i < MAGIC.length; i++) if (u[i] !== MAGIC[i]) return null;
+  if (u.length < MAGIC.length + 2) throw new Error('密文损坏：头部不完整');
+
   const version = u[MAGIC.length];
   const mode = u[MAGIC.length + 1];
+  // 版本白名单比对：仅接受当前版本与仍兼容的旧版本
+  if (version !== VERSION && version !== LEGACY_VERSION) {
+    throw new Error(`不支持的文件格式版本：v${version}（当前支持 v${VERSION} 与 v${LEGACY_VERSION}）`);
+  }
+  if (mode !== MODE_PASSWORD && mode !== MODE_KEY) throw new Error('密文损坏：未知的加密模式');
+
   let off = MAGIC.length + 2;
-  let salt = null, iterations = null;
+  let salt = null, iterations = null, chunkSize = null;
   if (mode === MODE_PASSWORD) {
     if (u.length < off + SALT_LEN + 4) throw new Error('密文损坏：密码模式头部不完整');
     salt = u.slice(off, off + SALT_LEN);
     off += SALT_LEN;
     iterations = new DataView(u.buffer, u.byteOffset + off, 4).getUint32(0, false);
     off += 4;
+    assertIterations(iterations); // 防恶意迭代次数卡死主线程
+  }
+  if (version === VERSION) { // v3 起头部记录分片大小
+    if (u.length < off + 4) throw new Error('密文损坏：缺少分片大小信息');
+    chunkSize = new DataView(u.buffer, u.byteOffset + off, 4).getUint32(0, false);
+    off += 4;
+    assertChunkSize(chunkSize);
   }
   if (u.length < off + 4) throw new Error('密文损坏：缺少分片信息');
   const count = new DataView(u.buffer, u.byteOffset + off, 4).getUint32(0, false);
   off += 4;
-  return { version, mode, salt, iterations, count, bodyOffset: off };
+  if (!Number.isInteger(count) || count < 1) throw new Error('密文损坏：分片数量非法');
+  return { version, mode, salt, iterations, chunkSize, count, bodyOffset: off };
 }
 
 /**
@@ -225,15 +281,34 @@ export async function decryptEncodedBytes(buf, resolveKey, opts = {}) {
   const head = parseHeader(buf);
   if (!head) return { plain: buf, legacy: true }; // 非本工具格式，交给上层按旧版处理
 
+  // 旧版 v2：多分片的切分方式从未正确实现，直接给出明确中文提示
+  if (head.version === LEGACY_VERSION && head.count > 1) {
+    throw new Error('此文件由存在缺陷的旧版本生成，无法解密');
+  }
+
+  // 载荷长度与分片数量的最低一致性校验（派生密钥前先做，避免无谓开销）
+  const bodyLen = u.length - head.bodyOffset;
+  if (bodyLen < head.count * (IV_LEN + TAG_LEN)) {
+    throw new Error('密文损坏：分片数量与数据长度不匹配');
+  }
+
   const key = await resolveKey(head);
   let off = head.bodyOffset;
   const outChunks = [];
   for (let i = 0; i < head.count; i++) {
-    if (u.length < off + IV_LEN) throw new Error('密文损坏：缺少 IV');
+    let ctEnd;
+    if (head.chunkSize === null) {
+      ctEnd = u.length; // v2 单分片：正文即剩余全部字节
+    } else if (i === head.count - 1) {
+      ctEnd = u.length; // 末片为余数
+    } else {
+      ctEnd = off + IV_LEN + head.chunkSize + TAG_LEN; // 非末片固定 IV + chunkSize + GCM 标签
+      if (ctEnd > u.length) throw new Error('密文损坏：分片数据不完整');
+    }
+    if (ctEnd - off < IV_LEN + TAG_LEN) throw new Error('密文损坏：分片数据不完整');
     const iv = u.slice(off, off + IV_LEN);
-    off += IV_LEN;
-    const ct = u.slice(off);
-    off += ct.length;
+    const ct = u.slice(off + IV_LEN, ctEnd);
+    off = ctEnd;
     try {
       const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
       outChunks.push(pt);
