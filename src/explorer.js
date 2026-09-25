@@ -227,6 +227,7 @@ function syncExplorerData() {
   for (const item of leftItems) {
     const el = document.createElement('div');
     el.className = 'explorer-item';
+    el.draggable = true;
     el.dataset.id = item.id;
     el.dataset.type = item.isFolder ? 'folder' : 'file';
 
@@ -284,11 +285,99 @@ function syncExplorerData() {
       }
     };
 
+    // 拖拽开始
+    el.ondragstart = (e) => {
+      e.dataTransfer.setData('text/plain', item.id.toString());
+      e.dataTransfer.effectAllowed = 'move';
+      el.classList.add('dragging');
+    };
+
+    // 拖拽结束
+    el.ondragend = () => {
+      el.classList.remove('dragging');
+      document.querySelectorAll('.explorer-item.drag-over').forEach(item => {
+        item.classList.remove('drag-over');
+      });
+    };
+
     content.appendChild(el);
   }
 
   // 更新面包屑
   updateBreadcrumb(leftItems);
+
+  // 为容器添加拖拽事件
+  setupExplorerDrop(content);
+}
+
+function setupExplorerDrop(container) {
+  container.ondragover = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const target = e.target.closest('.explorer-item');
+    if (target) {
+      document.querySelectorAll('.explorer-item.drag-over').forEach(item => {
+        item.classList.remove('drag-over');
+      });
+      target.classList.add('drag-over');
+    }
+  };
+
+  container.ondragleave = (e) => {
+    if (!container.contains(e.relatedTarget)) {
+      document.querySelectorAll('.explorer-item.drag-over').forEach(item => {
+        item.classList.remove('drag-over');
+      });
+    }
+  };
+
+  container.ondrop = (e) => {
+    e.preventDefault();
+    const sourceId = parseInt(e.dataTransfer.getData('text/plain'));
+    if (isNaN(sourceId)) return;
+
+    const target = e.target.closest('.explorer-item');
+    if (target) {
+      const targetId = parseInt(target.dataset.id);
+      if (sourceId === targetId) return;
+
+      const items = libraryModule.getLeftItems();
+      const sourceItem = items.find(i => i.id === sourceId);
+      const targetItem = items.find(i => i.id === targetId);
+
+      if (sourceItem && targetItem) {
+        // 移动到目标文件夹内或之后
+        const sourceIndex = items.indexOf(sourceItem);
+        const targetIndex = items.indexOf(targetItem);
+
+        if (sourceIndex !== -1 && targetIndex !== -1) {
+          // 移除源项目
+          items.splice(sourceIndex, 1);
+
+          // 计算新的目标索引
+          let newIndex = targetIndex;
+          if (sourceIndex < targetIndex) {
+            newIndex--;
+          }
+
+          // 如果是文件夹，添加到文件夹内
+          if (targetItem.isFolder) {
+            libraryModule.addChildToFolder(targetId, sourceItem);
+          } else {
+            items.splice(newIndex, 0, sourceItem);
+          }
+
+          syncExplorerData();
+          toast(`已移动「${sourceItem.name}」`);
+        }
+      }
+    }
+
+    // 清除所有拖拽状态
+    document.querySelectorAll('.explorer-item.drag-over').forEach(item => {
+      item.classList.remove('drag-over');
+    });
+  };
 }
 
 function updateBreadcrumb(items) {

@@ -226,6 +226,10 @@ app.on('window-all-closed', () => {
 
 // 关闭前提示未保存更改
 app.on('before-quit', async (event) => {
-  if (mainWindow && mainWindow.webContents.isCrashed()) return;
+  try {
+    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents.isCrashed()) return;
+  } catch (e) {
+    // 忽略窗口已销毁的错误
+  }
   // 这里可以添加未保存更改检查逻辑
 });
