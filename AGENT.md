@@ -10,7 +10,9 @@ AES-GCM 文件加密箱 · Vite 原生 JS 模块化项目（无框架）。部�
 | 文件 | 职责 |
 |---|---|
 | `index.html` | 入口，全部静态 UI 结构 |
-| `src/main.js` | 装配入口：各模块 init、加密业务流 |
+| `src/main.js` | 装配入口：各模块 init、按钮接线 |
+| `src/encryptFlow.js` | 加密业务流（提交点 6 拆分自 main.js） |
+| `src/payload.js` | 二进制载荷格式契约：构建与解析（提交点 6 合并） |
 | `src/crypto.js` | 加密核心：MAGIC 头、PBKDF2、AES-GCM、分片、压缩、哈希 |
 | `src/key.js` | 密钥获取/派生/记忆（localStorage 按文件哈希记忆） |
 | `src/library.js` | 文件库穿梭框（左右列表）+ localStorage 缓存 + 重命名 |
@@ -19,9 +21,10 @@ AES-GCM 文件加密箱 · Vite 原生 JS 模块化项目（无框架）。部�
 | `src/imageEditor.js` | 图片编辑器（线稿/饱和/对比/马赛克/画笔） |
 | `src/camera.js` | 拍照/录像 |
 | `src/settings.js` | 配置导入/导出（sweetalert2） |
-| `src/ui.js` | DOM/toast/模态框/拖拽工具 |
+| `src/ui.js` | DOM/toast/模态框/拖拽/下载工具 + localStorage 统一读写（`lsGet/lsSet/lsDel`） |
 | `src/icons.js` | Lucide 开源 SVG 图标集（MIT） |
 | `src/style.css` | 唯一样式源，VS Code Dark+ 主题 |
+| `tests/` | vitest 单元测试（crypto 核心 + library 穿梭/缓存） |
 | `plan.md` | 用户可读的待办清单（收尾时更新） |
 
 ### 常用命令
