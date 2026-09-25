@@ -67,6 +67,8 @@ function setup() {
   injectIcons();
   // Esc 关闭弹窗与焦点管理
   wireDialogModals();
+  // 主题切换
+  initThemeToggle();
 
   // 模态框点击空白关闭
   wireDismissModal('imageModal');
@@ -95,8 +97,29 @@ function setup() {
 
   // 密码派生开关联动
   const pwdCheck = $('usePasswordDerive');
-  const pwdInput = $('passwordDeriveInput');
-  pwdCheck.onchange = (e) => { pwdInput.disabled = !e.target.checked; };
+  pwdCheck.addEventListener('change', () => { $('passwordDeriveInput').disabled = !pwdCheck.checked; });
+}
+
+// ---- 主题切换 ----
+function getTheme() {
+  return localStorage.getItem('wbw-theme') || 'auto';
+}
+function setTheme(t) {
+  localStorage.setItem('wbw-theme', t);
+  document.documentElement.setAttribute('data-theme', t === 'auto' ? '' : t);
+  const icon = $('themeToggle');
+  if (icon) { icon.setAttribute('data-icon', t === 'light' ? 'sun' : 'moon'); injectIcons(icon.parentElement); }
+}
+function initThemeToggle() {
+  const t = getTheme();
+  document.documentElement.setAttribute('data-theme', t === 'auto' ? '' : t);
+  const icon = $('themeToggle');
+  if (icon) {
+    icon.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      setTheme(current === 'dark' ? 'light' : 'dark');
+    });
+  }
 }
 
 setup();

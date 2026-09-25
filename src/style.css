@@ -170,7 +170,15 @@ hr{border-color:var(--border);margin:1rem 0;}
   .file-card img,.file-card video{height:80px;}
   .toast-container{left:12px;right:12px;max-width:none;top:12px;}
 }
-/* 开源图标（Lucide）内联 SVG */
+/* 深浅主题切换 */
+[data-theme="light"]{--bg-app:#f3f3f3;--bg-editor:#fafafa;--bg-side:#f0f0f0;--bg-activity:#e8e8e8;--card-bg:#ffffff;--card-border:#e0e0e0;--text:#333333;--text-sec:#666666;--file-bg:#fafafa;--border:#d0d0d0;--border-strong:#c0c0c0;--accent:#007acc;--accent-hover:#1177bb;--focus:#005a9e;--focus-soft:rgba(0,90,158,0.15);--selection:#cce8ff;--selection-soft:rgba(0,122,204,0.15);--keybox:#f5f5f5;--secondary:#008099;--green-ok:#16825d;--red-err:#cf2222;--code-blue:#795e2c;--code-purple:#a31515;--on-accent:#fff;--shadow:rgba(0,0,0,0.12);--overlay:rgba(0,0,0,0.6);}
+[data-theme="light"] .btn{color:var(--on-accent);}
+[data-theme="light"] .btn-sm,[data-theme="light"] .btn-outline{color:var(--text);}
+[data-theme="light"] .close-modal{color:var(--text);}
+[data-theme="light"] .tab-btn{color:var(--text);}
+[data-theme="light"] .modal-content-editor{background:var(--card-bg);}
+/* prefers-color-scheme 自动跟随 */
+@media (prefers-color-scheme: light){[data-theme="auto"] .app-container{--bg-app:#f3f3f3;--bg-editor:#fafafa;--bg-side:#f0f0f0;--bg-activity:#e8e8e8;--card-bg:#ffffff;--card-border:#e0e0e0;--text:#333333;--text-sec:#666666;--file-bg:#fafafa;--border:#d0d0d0;--border-strong:#c0c0c0;--accent:#007acc;--accent-hover:#1177bb;--focus:#005a9e;--focus-soft:rgba(0,90,158,0.15);--selection:#cce8ff;--selection-soft:rgba(0,122,204,0.15);--keybox:#f5f5f5;--secondary:#008099;--green-ok:#16825d;--red-err:#cf2222;--code-blue:#795e2c;--code-purple:#a31515;--on-accent:#fff;--shadow:rgba(0,0,0,0.12);--overlay:rgba(0,0,0,0.6);}}
 .icon{display:inline-flex;align-items:center;justify-content:center;vertical-align:-0.125em;color:inherit;line-height:0;}
 button .icon,label .icon,h4 .icon {vertical-align:-0.2em;margin-inline-end:2px;}
 h1 .icon,h3 .icon,span .icon,div .icon{vertical-align:-0.15em;}
