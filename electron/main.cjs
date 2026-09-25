@@ -5,9 +5,11 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 const os = require('os');
+const { getDefaultKey, encryptBuffer, decryptBuffer } = require('./crypto.cjs');
 
 let mainWindow;
 let currentWorkspace = null;
+let defaultKey = getDefaultKey();
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -46,6 +48,43 @@ ipcMain.handle('window:maximize', () => {
 });
 ipcMain.handle('window:close', () => { if (mainWindow) mainWindow.close(); });
 
+// ========== 文件加密存储 ==========
+ipcMain.handle('file:saveEncrypted', async (_event, filePath, content) => {
+  try {
+    const buffer = Buffer.from(content, 'base64');
+    // 如果选择了工作目录，不加密直接保存；否则加密保存
+    const dataToSave = currentWorkspace 
+      ? buffer 
+      : await encryptBuffer(buffer, defaultKey);
+    
+    await fs.writeFile(filePath, dataToSave);
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('file:loadEncrypted', async (_event, filePath) => {
+  try {
+    let buffer = await fs.readFile(filePath);
+    
+    // 如果选择了工作目录，直接读取；否则尝试解密
+    if (!currentWorkspace) {
+      // 尝试解密
+      try {
+        buffer = await decryptBuffer(buffer, defaultKey);
+      } catch (e) {
+        // 解密失败，可能是明文文件或损坏
+        return { success: true, content: buffer.toString('base64'), isEncrypted: false };
+      }
+    }
+    
+    return { success: true, content: buffer.toString('base64') };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
 // ========== 工作目录管理 ==========
 ipcMain.handle('workspace:set', async (_event, dirPath) => {
   currentWorkspace = dirPath;
@@ -53,7 +92,10 @@ ipcMain.handle('workspace:set', async (_event, dirPath) => {
 });
 
 ipcMain.handle('workspace:get', () => {
-  return { path: currentWorkspace };
+  return { 
+    path: currentWorkspace,
+    isUsingDefaultKey: !currentWorkspace 
+  };
 });
 
 // ========== 文件系统操作 ==========

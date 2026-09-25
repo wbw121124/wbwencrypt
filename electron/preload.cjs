@@ -18,6 +18,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   readFile: (filePath) => ipcRenderer.invoke('fs:readFile', filePath),
   writeFile: (filePath, content, isBinary) => ipcRenderer.invoke('fs:writeFile', filePath, content, isBinary),
   getFileInfo: (filePath) => ipcRenderer.invoke('fs:getFileInfo', filePath),
+  
+  // ========== 加密文件操作 ==========
+  saveEncrypted: (filePath, content) => ipcRenderer.invoke('file:saveEncrypted', filePath, content),
+  loadEncrypted: (filePath) => ipcRenderer.invoke('file:loadEncrypted', filePath),
 
   // ========== 对话框 ==========
   openFolder: () => ipcRenderer.invoke('dialog:openFolder'),
