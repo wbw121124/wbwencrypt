@@ -64,7 +64,7 @@ body{background:var(--bg-app);margin:0;min-height:100vh;padding:1.5rem 1rem;colo
 .app-container{max-width:1600px;margin:0 auto;}
 .header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:1.5rem;}
 .header h1{font-size:1.8rem;background:linear-gradient(135deg,var(--code-blue),var(--code-purple));background-clip:text;-webkit-background-clip:text;color:transparent;}
-.cards-grid{display:flex;flex-wrap:wrap;gap:1.8rem;justify-content:center;}
+.cards-grid{display:flex;flex-direction:column;gap:1.8rem;align-items:center;}
 .card{flex:1;background:var(--card-bg);border-radius:var(--r-lg);padding:1.5rem;border:1px solid var(--card-border);box-shadow:0 20px 35px -12px var(--shadow);}
 .card-title{font-size:1.3rem;font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:1rem;color:var(--text);border-left:5px solid var(--accent);padding-left:1rem;}
 .file-area{background:var(--file-bg);border-radius:var(--r-lg);padding:1rem;margin-bottom:1rem;border:1px dashed var(--border-strong);transition:border-color .15s,background .15s;}
