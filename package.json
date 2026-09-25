@@ -3,17 +3,23 @@
   "version": "2.0.0",
   "description": "AES-GCM 文件加密箱 · Vite 模块化版（多文件下载/预览 + 深色专业主题）",
   "type": "module",
+  "main": "electron/main.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "electron:dev": "ELECTRON_ENV=development electron .",
+    "electron:build": "vite build && electron-builder",
+    "postinstall": "electron-builder install-app-deps"
   },
   "license": "MIT",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0",
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.12.0",
@@ -24,5 +30,22 @@
   "dependencies": {
     "jszip": "^3.10.1",
     "sweetalert2": "^11.26.25"
+  },
+  "build": {
+    "appId": "com.wbw.encrypt",
+    "productName": "AES-GCM加密箱",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": ["nsis"],
+      "icon": "build/icon.ico"
+    }
   }
+}
 }

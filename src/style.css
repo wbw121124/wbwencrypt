@@ -80,7 +80,7 @@ input[type="file"].visually-hidden{position:absolute;width:1px;height:1px;paddin
 .view-grid .transfer-item .btn-group{display:none;}
 .view-list .transfer-item{flex-direction:row;}
 .view-details .transfer-item{display:grid;grid-template-columns:40px 1fr 80px 60px;align-items:center;gap:8px;}
-.view-details .transfer-item .btn-group{display:flex;}
+.view-details .transfer-item .btnGroup{display:flex;}
 .transfer-buttons{display:flex;flex-direction:column;justify-content:center;gap:8px;}
 .transfer-buttons button{background:var(--accent);border:none;border-radius:2rem;padding:6px 12px;color:#fff;cursor:pointer;font-weight:bold;transition:background .15s;}
 .transfer-buttons button:hover{background:var(--accent-hover);}
