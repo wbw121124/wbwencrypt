@@ -34,13 +34,20 @@ body{background:var(--bg-editor);margin:0;min-height:100vh;padding:1.5rem 1rem;c
 .file-area{background:var(--file-bg);border-radius:1.5rem;padding:1rem;margin-bottom:1rem;border:1px dashed var(--border-strong);transition:border-color .15s,background .15s;}
 .file-area.drag-over{border-color:var(--focus);background:var(--selection-soft);}
 .file-label{display:inline-flex;align-items:center;gap:0.5rem;background:var(--bg-side);padding:0.4rem 1rem;border-radius:3rem;font-weight:500;cursor:pointer;border:1px solid var(--border);margin:0 5px 8px 0;font-size:0.8rem;color:var(--text);}
-input[type="file"]{display:none;}
+/* 焦点可见性 */
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:4px;}
+.btn:focus-visible,.btn-sm:focus-visible,.btn-outline:focus-visible,.tab-btn:focus-visible,.transfer-item:focus-visible,.file-card:focus-visible,.file-label:focus-visible{outline:2px solid var(--focus);outline-offset:2px;}
+input[type="file"].visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+/* 禁用态对比度修复 */
+.btn:disabled,.btn-sm:disabled{filter:brightness(0.7);cursor:not-allowed;}
+/* 文本辅助色提亮以满足 WCAG AA 4.5:1 */
+:root{--text-sec:#9d9d9d;}
 .transfer-container{display:flex;gap:1rem;flex-wrap:wrap;margin-top:0.5rem;}
 .transfer-panel{flex:1;background:var(--bg-editor);border-radius:1.2rem;padding:0.8rem;border:1px solid var(--border);}
 .transfer-list{min-height:280px;max-height:300px;overflow-y:auto;background:var(--bg-side);border-radius:1rem;padding:6px;}
 .transfer-list::-webkit-scrollbar{width:8px;}
 .transfer-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
-.transfer-item{display:flex;align-items:center;gap:8px;padding:6px;margin-bottom:6px;background:var(--bg-editor);border-radius:0.8rem;cursor:pointer;border:1px solid var(--border);}
+.transfer-item{display:flex;align-items:center;gap:8px;padding:6px;margin-bottom:6px;background:var(--bg-editor);border-radius:0.8rem;cursor:pointer;border:1px solid var(--border);tab-index:0;}
 .transfer-item:hover{border-color:var(--focus);background:var(--selection-soft);}
 .transfer-item img{width:40px;height:40px;object-fit:cover;border-radius:6px;}
 .transfer-item .doc-icon{font-size:28px;min-width:40px;text-align:center;}

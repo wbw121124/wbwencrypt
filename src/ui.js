@@ -24,6 +24,26 @@ export function toast(message, type = 'info', duration = 2600) {
 export function showModal(id) { const m = document.getElementById(id); if (m) m.style.display = 'flex'; }
 export function hideModal(id) { const m = document.getElementById(id); if (m) m.style.display = 'none'; }
 
+// 焦点管理
+let lastFocusedElement = null;
+function trapFocus(modal) {
+  lastFocusedElement = document.activeElement;
+  const focusable = modal.querySelectorAll('button, input, textarea, [tabindex]:not([tabindex="-1"])');
+  if (focusable.length) focusable[0].focus();
+}
+function restoreFocus() { if (lastFocusedElement && lastFocusedElement.closest) lastFocusedElement.focus(); }
+
+// 为所有 dialog 模态框挂载 ESC 关闭与焦点管理
+export function wireDialogModals() {
+  document.querySelectorAll('[role="dialog"]').forEach(modal => {
+    modal.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { hideModal(modal.id); restoreFocus(); }
+    });
+    // 点击空白处关闭
+    modal.addEventListener('mousedown', (e) => { if (e.target === modal) { hideModal(modal.id); restoreFocus(); } });
+  });
+}
+
 // 为 clicked 模态框（点击空白处关闭）挂载
 export function wireDismissModal(id) {
   const m = document.getElementById(id);

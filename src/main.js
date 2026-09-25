@@ -2,7 +2,7 @@
 // main.js —— 入口：装配各模块并接线（加密业务流在 encryptFlow.js）
 // ============================================================================
 import './style.css';
-import { $, toast, wireDismissModal } from './ui.js';
+import { $, toast, wireDismissModal, wireDialogModals } from './ui.js';
 import { initLibrary, isImageType } from './library.js';
 import { initEditor, openEditorForItem } from './editor.js';
 import { initImageEditor, openImageEditor } from './imageEditor.js';
@@ -65,6 +65,8 @@ function setup() {
 
   // 填充 HTML 中的 [data-icon] 占位图标
   injectIcons();
+  // Esc 关闭弹窗与焦点管理
+  wireDialogModals();
 
   // 模态框点击空白关闭
   wireDismissModal('imageModal');
