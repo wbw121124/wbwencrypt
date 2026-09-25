@@ -73,7 +73,7 @@ function createExplorerView() {
       <button id="explorerForward" title="前进" disabled>${icon('chevron-right', 16)}</button>
       <button id="explorerUp" title="上级目录">${icon('arrow-up', 16)}</button>
       <button id="explorerRefresh" title="刷新">${icon('refresh-cw', 16)}</button>
-      <div id="explorerPath" class="explorer-path">未选择文件夹</div>
+      <div id="explorerBreadcrumb" class="explorer-breadcrumb">未选择文件夹</div>
       <button id="explorerNewFolder" title="新建文件夹">${icon('folder-plus', 16)}</button>
       <button id="explorerDelete" title="删除">${icon('trash-2', 16)}</button>
       <button id="explorerRename" title="重命名">${icon('pencil', 16)}</button>
@@ -81,7 +81,7 @@ function createExplorerView() {
     </div>
     <div class="explorer-body">
       <div id="explorerSidebar" class="explorer-sidebar">
-        <div class="sidebar-header">导航</div>
+        <div class="sidebar-header">文件库</div>
         <div id="explorerTree"></div>
       </div>
       <div id="explorerContent" class="explorer-content"></div>
