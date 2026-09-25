@@ -2,43 +2,12 @@
 // decrypt.js —— 解密 + 多文件网格预览 + 单文件下载 + JSZip 批量 ZIP
 // ============================================================================
 import { $, toast, hideProgress, setProgress, openImageModal, openVideoModal, buttonProgress, downloadBlob } from './ui.js';
-import { decryptEncodedBytes, decompress, sha256, splitPayload, uint8FromBuffer, importKeyFromB64 } from './crypto.js';
+import { decryptEncodedBytes, decompress, sha256, splitPayload, importKeyFromB64 } from './crypto.js';
 import { makeKeyResolver, rememberDecryptSuccess, getRememberedDecrypt } from './key.js';
 import { icon } from './icons.js';
 import { addFileToLeft, isImageType, isVideoType } from './library.js';
-
-// ---- 批量载荷解析（继承旧版"多重"格式） ----
-function parseBatchPayload(buf) {
-  const u = uint8FromBuffer(buf);
-  if (u.length < 4 || String.fromCharCode(u[0], u[1], u[2], u[3]) !== 'MULT') return null;
-  const dv = new DataView(u.buffer, u.byteOffset, u.byteLength);
-  let off = 4;
-  const ver = dv.getUint8(off); off += 1;
-  if (ver !== 1) throw new Error('批量版本不支持');
-  const cnt = dv.getUint32(off, true); off += 4;
-  const files = [];
-  for (let i = 0; i < cnt; i++) {
-    const nameLen = dv.getUint16(off, false); off += 2;
-    const name = new TextDecoder().decode(u.subarray(off, off + nameLen)); off += nameLen;
-    const mimeLen = dv.getUint16(off, false); off += 2;
-    const mime = new TextDecoder().decode(u.subarray(off, off + mimeLen)); off += mimeLen;
-    const dataLen = dv.getUint32(off, true); off += 4;
-    const data = u.slice(off, off + dataLen).buffer; off += dataLen;
-    files.push({ name, mime, dataBuffer: data });
-  }
-  return files;
-}
-
-function parseSinglePayload(buf) {
-  const u = uint8FromBuffer(buf);
-  const dv = new DataView(u.buffer, u.byteOffset, u.byteLength);
-  const mimeLen = dv.getUint16(0, false);
-  let off = 2;
-  const mime = new TextDecoder().decode(u.subarray(off, off + mimeLen)); off += mimeLen;
-  const expectedHash = u.slice(off, off + 32); off += 32;
-  const compressedData = u.slice(off).buffer;
-  return { mimeType: mime, expectedHash, compressedData };
-}
+// 批量/单文件载荷的二进制契约统一归属 payload.js，此处只做解析结果的业务校验
+import { parseBatchPayload, parseSinglePayload } from './payload.js';
 
 function extFromMime(mime, fallback) {
   if (isImageType(mime)) { const e = mime.split('/')[1].replace('jpeg', 'jpg'); return e ? '.' + e : '.img'; }

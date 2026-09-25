@@ -1,34 +1,17 @@
 // ============================================================================
-// main.js —— 入口：装配各模块并接线加密/解密/记忆流程
+// main.js —— 入口：装配各模块并接线（加密业务流在 encryptFlow.js）
 // ============================================================================
 import './style.css';
-import { $, toast, wireDismissModal, setProgress, hideProgress, buttonProgress, downloadBlob } from './ui.js';
-import { initLibrary, getRightItems, clearRight, isImageType } from './library.js';
+import { $, toast, wireDismissModal } from './ui.js';
+import { initLibrary, isImageType } from './library.js';
 import { initEditor, openEditorForItem } from './editor.js';
 import { initImageEditor, openImageEditor } from './imageEditor.js';
 import { initCamera } from './camera.js';
 import { initDecrypt } from './decrypt.js';
-import { getEncryptionKey, rememberKeyForHash, getKeyForHash, listStoredRecords, clearKeyForHash, clearAllKeys } from './key.js';
+import { listStoredRecords, clearKeyForHash, clearAllKeys } from './key.js';
 import { setupConfigPanel } from './settings.js';
 import { injectIcons, icon } from './icons.js';
-import { concatBuffers, sha256, compress, encryptBytes, hexFromBytes, base64ToBytes } from './crypto.js';
-
-function buildBatchPayload(files) {
-  const enc = new TextEncoder();
-  const parts = [enc.encode('MULT').buffer, new Uint8Array([1]).buffer];
-  const cntBuf = new ArrayBuffer(4); new DataView(cntBuf).setUint32(0, files.length, true); parts.push(cntBuf);
-  for (const f of files) {
-    const nameBytes = enc.encode(f.name);
-    const nameLen = new ArrayBuffer(2); new DataView(nameLen).setUint16(0, nameBytes.length, false);
-    parts.push(nameLen, nameBytes.buffer);
-    const mimeBytes = enc.encode(f.mime);
-    const mimeLen = new ArrayBuffer(2); new DataView(mimeLen).setUint16(0, mimeBytes.length, false);
-    parts.push(mimeLen, mimeBytes.buffer);
-    const dataLenBuf = new ArrayBuffer(4); new DataView(dataLenBuf).setUint32(0, f.dataBuffer.byteLength, true);
-    parts.push(dataLenBuf, f.dataBuffer);
-  }
-  return concatBuffers(parts);
-}
+import { runEncryptFlow } from './encryptFlow.js';
 
 // ---- 功能2：记忆密钥管理面板 ----
 function renderMemoryPanel() {
@@ -105,85 +88,8 @@ function setup() {
   // 导入/导出配置（导入后刷新记忆面板）
   setupConfigPanel(() => renderMemoryPanel());
 
-  // ---- 加密按钮 ----
-  $('transferEncryptBtn').onclick = async () => {
-    const right = getRightItems();
-    if (!right.length) { toast('请将文件移至右侧待加密列表', 'error'); return; }
-    const btn = $('transferEncryptBtn');
-    btn.disabled = true; buttonProgress(btn, '⏳ 加密中...');
-    try {
-      const filesData = right.map(it => ({ name: it.name, mime: it.mime, dataBuffer: it.arrayBuffer }));
-      const rawBatch = buildBatchPayload(filesData);
-      const hash = await sha256(rawBatch);
-      const compressed = await compress(rawBatch);
-      const finalPlain = concatBuffers([hash.buffer, compressed]);
-
-      const customKeyInput = $('customKeyInput');
-      const customKey = customKeyInput.value.trim();
-      const usePassword = $('usePasswordDerive').checked;
-      const password = $('passwordDeriveInput').value;
-
-      // 密钥记忆（针对文件内容哈希）：仅密钥模式记忆/复用
-      // storeHash 与完整性校验用的 hash 同源（sha256(rawBatch)），直接复用避免重复哈希
-      const storeHash = hexFromBytes(hash);
-      if (!usePassword && !customKey && storeHash) {
-        const mem = getKeyForHash(storeHash);
-        if (mem && mem.type === 'key') {
-          customKeyInput.value = mem.keyB64;
-          toast('已自动复用该文件的记忆密钥');
-        }
-      }
-
-      setProgress('encryptProgress', '🔑 生成密钥...');
-      const keyInfo = await getEncryptionKey(customKeyInput.value.trim(), usePassword, password);
-
-      // 分片加密 + 进度
-      const { buffer } = await encryptBytes(finalPlain, {
-        type: keyInfo.type,
-        key: keyInfo.type === 'key' ? keyInfo.key : undefined,
-        password: keyInfo.type === 'password' ? password : undefined,
-        salt: keyInfo.saltB64 ? base64ToBytes(keyInfo.saltB64) : undefined,
-      }, {
-        onProgress: (pct, i, count) => setProgress('encryptProgress', `🔐 加密分片 ${i}/${count} (${pct}%)`),
-      });
-
-      // 记忆密钥（针对文件内容哈希）
-      if (storeHash) {
-        const record = keyInfo.type === 'key'
-          ? { type: 'key', keyB64: keyInfo.keyB64 }
-          : { type: 'password', saltB64: keyInfo.saltB64 };
-        rememberKeyForHash(storeHash, record);
-      }
-
-      $('usedKeyDisplay').innerText = keyInfo.keyB64;
-      $('encryptResultUnified').style.display = 'block';
-      // 功能1：单文件时用原文件名，多文件用批量名
-      const downloadName = right.length === 1
-        ? right[0].name + '.aes'
-        : `encrypted_batch_${Date.now()}.aes`;
-      // 下载交给统一工具：每次点击新建 blob URL 并延迟回收，不再持有全局 window.downloadUrl
-      const encBlob = new Blob([buffer]);
-      $('downloadEncryptedBtn').onclick = () => downloadBlob(downloadName, encBlob);
-      $('copyUsedKeyBtn').onclick = async () => {
-        try {
-          await navigator.clipboard.writeText(keyInfo.keyB64);
-          toast('密钥已复制');
-        } catch (e) {
-          toast('复制失败，请手动复制', 'error');
-        }
-      };
-      hideProgress('encryptProgress');
-      buttonProgress(btn, '🔒 加密完成');
-      // 功能3：加密后清空待加密列表
-      if ($('clearAfterEncrypt').checked) clearRight();
-      renderMemoryPanel(); // 刷新记忆面板
-      if (storeHash) toast('已记忆此文件的密钥');
-    } catch (e) {
-      hideProgress('encryptProgress');
-      buttonProgress(btn, '重试');
-      toast('加密失败: ' + e.message, 'error');
-    } finally { btn.disabled = false; }
-  };
+  // ---- 加密按钮（业务流在 encryptFlow.js，这里只做接线与记忆面板刷新）----
+  $('transferEncryptBtn').onclick = () => runEncryptFlow(renderMemoryPanel);
 
   // 密码派生开关联动
   const pwdCheck = $('usePasswordDerive');
