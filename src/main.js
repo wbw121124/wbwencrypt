@@ -8,7 +8,7 @@ import { initEditor, openEditorForItem } from './editor.js';
 import { initImageEditor, openImageEditor } from './imageEditor.js';
 import { initCamera } from './camera.js';
 import { initDecrypt } from './decrypt.js';
-import { getEncryptionKey, hashOfBuffers, rememberKeyForHash, getKeyForHash, listStoredRecords, clearKeyForHash, clearAllKeys } from './key.js';
+import { getEncryptionKey, rememberKeyForHash, getKeyForHash, listStoredRecords, clearKeyForHash, clearAllKeys } from './key.js';
 import { setupConfigPanel } from './settings.js';
 import { injectIcons, icon } from './icons.js';
 import { concatBuffers, sha256, compress, encryptBytes, hexFromBytes } from './crypto.js';
@@ -76,7 +76,7 @@ function setup() {
     },
   });
 
-  initEditor({ onSave: null });
+  initEditor();
   initImageEditor();
   initCamera();
   initDecrypt();
@@ -106,8 +106,8 @@ function setup() {
       const password = $('passwordDeriveInput').value;
 
       // 密钥记忆（针对文件内容哈希）：仅密钥模式记忆/复用
-      let storeHash = null;
-      try { storeHash = hexFromBytes(await hashOfBuffers([rawBatch])); } catch (e) {}
+      // storeHash 与完整性校验用的 hash 同源（sha256(rawBatch)），直接复用避免重复哈希
+      const storeHash = hexFromBytes(hash);
       if (!usePassword && !customKey && storeHash) {
         const mem = getKeyForHash(storeHash);
         if (mem && mem.type === 'key') {
@@ -120,7 +120,7 @@ function setup() {
       const keyInfo = await getEncryptionKey(customKeyInput.value.trim(), usePassword, password);
 
       // 分片加密 + 进度
-      const { buffer, salt } = await encryptBytes(finalPlain, {
+      const { buffer } = await encryptBytes(finalPlain, {
         type: keyInfo.type,
         key: keyInfo.type === 'key' ? keyInfo.key : undefined,
         password: keyInfo.type === 'password' ? password : undefined,

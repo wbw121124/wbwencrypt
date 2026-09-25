@@ -81,11 +81,13 @@ export function clearCache() {
 }
 
 // ---- 添加文件 ----
-export async function addFileToLeft(file, { contentHash } = {}) {
+export async function addFileToLeft(file) {
   const ab = await file.arrayBuffer();
-  let hashHex = contentHash;
-  if (!hashHex) {
-    try { hashHex = hexFromBytes(await sha256(ab)); } catch (e) { hashHex = ''; }
+  let hashHex = '';
+  try {
+    hashHex = hexFromBytes(await sha256(ab));
+  } catch (e) {
+    // 哈希失败不阻断入库，hashHex 留空表示无内容摘要
   }
   const url = URL.createObjectURL(file);
   const item = {
@@ -128,7 +130,7 @@ export function removeItem(id) {
   rightItems = rightItems.filter(i => i.id !== id);
   render();
 }
-export function updateItem(item) {
+export function updateItem(_item) {
   render();
 }
 
@@ -216,7 +218,7 @@ function getItemActions() {
 }
 
 // ---- 初始化 ----
-export function initLibrary({ hooks, onAddFiles }) {
+export function initLibrary({ hooks }) {
   registerActions(hooks);
   const addBtn = $('addFilesBtn');
   addBtn.addEventListener('change', (e) => {

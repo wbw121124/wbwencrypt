@@ -2,7 +2,7 @@
 // decrypt.js —— 解密 + 多文件网格预览 + 单文件下载 + JSZip 批量 ZIP
 // ============================================================================
 import { $, toast, hideProgress, setProgress, openImageModal, openVideoModal } from './ui.js';
-import { decryptEncodedBytes, decompress, sha256, splitPayload, uint8FromBuffer, importKeyFromB64, deriveKeyFromPasswordIter } from './crypto.js';
+import { decryptEncodedBytes, decompress, sha256, splitPayload, uint8FromBuffer, importKeyFromB64 } from './crypto.js';
 import { makeKeyResolver, rememberDecryptSuccess, getRememberedDecrypt } from './key.js';
 import { icon } from './icons.js';
 import { addFileToLeft } from './library.js';

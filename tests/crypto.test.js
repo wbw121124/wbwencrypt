@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   MAGIC, VERSION, LEGACY_VERSION, MODE_KEY, MODE_PASSWORD,
-  IV_LEN, TAG_LEN, MIN_PBKDF2_ITERATIONS, MAX_PBKDF2_ITERATIONS,
+  IV_LEN, MIN_PBKDF2_ITERATIONS, MAX_PBKDF2_ITERATIONS,
   DEFAULT_CHUNK_SIZE, SALT_LEN,
   encryptBytes, decryptEncodedBytes, parseHeader, concatBuffers,
   generateRandomKey, exportKeyB64, importKeyFromB64, deriveKeyFromPasswordIter,

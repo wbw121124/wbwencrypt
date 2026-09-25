@@ -3,7 +3,6 @@
 // ============================================================================
 import { $, toast } from './ui.js';
 import { addFileToLeft } from './library.js';
-import { icon } from './icons.js';
 
 let currentStream = null;
 let mediaRecorder = null;

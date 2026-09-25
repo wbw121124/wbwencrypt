@@ -21,7 +21,7 @@ function setTab(html) {
   $('modalEditTxtTab').classList.toggle('active', !html);
 }
 
-export function initEditor({ onSave }) {
+export function initEditor() {
   $('modalEditHtmlTab').onclick = () => setTab(true);
   $('modalEditTxtTab').onclick = () => setTab(false);
   $('closeEditorModalBtn').onclick = () => hideModal('editorModal');
@@ -66,7 +66,6 @@ export function initEditor({ onSave }) {
     currentEditingItem.mime = newMime;
     currentEditingItem.name = newName;
     currentEditingItem.hashHex = '';
-    if (onSave) onSave(currentEditingItem);
     hideModal('editorModal');
     toast('已保存到原文件');
   };

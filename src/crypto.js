@@ -21,7 +21,7 @@ export const MODE_PASSWORD = 2;     // 密码模式（PBKDF2 派生）
 export const SALT_LEN = 16;
 export const IV_LEN = 12;
 export const TAG_LEN = 16;          // AES-GCM 认证标签长度
-export const PBKDF2_ITERATIONS = 1000000; // 对标业界标准（StaticShield 亦为 1,000,000）
+const PBKDF2_ITERATIONS = 1000000; // 对标业界标准（StaticShield 亦为 1,000,000）
 export const DEFAULT_CHUNK_SIZE = 8 * 1024 * 1024; // 8MB / 块
 
 // PBKDF2 迭代次数上下限：防恶意文件用超大迭代次数卡死主线程，也防误传过小值
@@ -71,9 +71,6 @@ export function base64ToArrBuf(s) {
   return u.buffer;
 }
 
-export function bytesToB64(bytes) { return arrBufToBase64(bytes.buffer); }
-export function b64ToBytes(s) { return new Uint8Array(base64ToArrBuf(s)); }
-
 export function randomBytes(n) { return crypto.getRandomValues(new Uint8Array(n)); }
 
 export function hexFromBytes(bytes) {
@@ -109,7 +106,7 @@ export async function decompress(buf) {
 }
 
 // ---- 密钥 ----
-export async function importRawKey(keyBuf) {
+async function importRawKey(keyBuf) {
   return await crypto.subtle.importKey('raw', keyBuf, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
 }
 
@@ -323,10 +320,6 @@ export async function decryptEncodedBytes(buf, resolveKey, opts = {}) {
 // ============================================================================
 // 载荷结构工具（在明文层面构建批量/单文件容器，含哈希校验）
 // ============================================================================
-
-export function encodePayload(hashBytes, compressedPayload) {
-  return concatBuffers([hashBytes.buffer, compressedPayload]);
-}
 
 export function splitPayload(finalPlain) {
   const u = uint8FromBuffer(finalPlain);

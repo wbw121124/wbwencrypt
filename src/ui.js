@@ -20,12 +20,9 @@ export function toast(message, type = 'info', duration = 2600) {
   setTimeout(() => el.remove(), duration);
 }
 
-export function alertInfo(message) { toast(message); }
-
 // ---- 模态框 ----
 export function showModal(id) { const m = document.getElementById(id); if (m) m.style.display = 'flex'; }
 export function hideModal(id) { const m = document.getElementById(id); if (m) m.style.display = 'none'; }
-export function toggleModal(id, on) { on ? showModal(id) : hideModal(id); }
 
 // 为 clicked 模态框（点击空白处关闭）挂载
 export function wireDismissModal(id) {

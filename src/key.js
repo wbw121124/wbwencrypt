@@ -3,7 +3,7 @@
 // ============================================================================
 import {
   generateRandomKey, exportKeyB64, importKeyFromB64, deriveKeyFromPassword,
-  deriveKeyFromPasswordIter, sha256, concatBuffers, arrBufToBase64,
+  deriveKeyFromPasswordIter, arrBufToBase64,
 } from './crypto.js';
 
 const STORE_PREFIX = 'wbwencrypt:key:';
@@ -15,16 +15,8 @@ function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return n
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
 
-// ---- 文件哈希（多个文件合并计算一个内容哈希）----
-export async function hashOfBuffers(buffers) {
-  const total = buffers.reduce((s, b) => s + b.byteLength, 0);
-  const merged = new Uint8Array(total);
-  let off = 0;
-  for (const b of buffers) { const u = new Uint8Array(b); merged.set(u, off); off += u.byteLength; }
-  return await sha256(merged.buffer);
-}
-
-export function hashKey(hashHex) { return STORE_PREFIX + hashHex; }
+// ---- 记忆存储键名（按文件内容哈希分键）----
+function hashKey(hashHex) { return STORE_PREFIX + hashHex; }
 
 // ---- 记忆存储结构 ----
 // { type:'key', keyB64 }  或  { type:'password', saltB64 }
@@ -100,8 +92,6 @@ export function getRememberedDecrypt() {
     return null;
   } catch (e) { return null; }
 }
-
-export function clearRememberedDecrypt() { lsDel(LAST_DECRYPT_KEY); }
 
 // ============================================================================
 // 加密端：获取密钥

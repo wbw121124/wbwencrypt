@@ -57,8 +57,6 @@ export function icon(name, size) {
   return wrap(name);
 }
 
-export function hasIcon(name) { return !!PATHS[name]; }
-
 // 填充 HTML 中的所有 [data-icon] 占位元素
 export function injectIcons(root = document) {
   root.querySelectorAll('[data-icon]').forEach((el) => {
