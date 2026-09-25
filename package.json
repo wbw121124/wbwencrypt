@@ -6,11 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "license": "MIT",
   "devDependencies": {
-    "vite": "^8.2.2"
+    "vite": "^8.2.2",
+    "vitest": "^5.0.1"
   },
   "dependencies": {
     "jszip": "^3.10.1",
