@@ -69,6 +69,8 @@ function setup() {
   wireDialogModals();
   // 主题切换
   initThemeToggle();
+  // 标题栏控制（仅Electron环境）
+  initTitlebar();
 
   // 模态框点击空白关闭
   wireDismissModal('imageModal');
@@ -120,6 +122,15 @@ function initThemeToggle() {
       setTheme(current === 'dark' ? 'light' : 'dark');
     });
   }
+}
+
+// ---- 标题栏控制（Electron）----
+function initTitlebar() {
+  const win = window.electronAPI;
+  if (!win) return;
+  $('titlebarMinimize').onclick = win.minimizeWindow;
+  $('titlebarMaximize').onclick = win.maximizeWindow;
+  $('titlebarClose').onclick = win.closeWindow;
 }
 
 setup();

@@ -9,7 +9,23 @@
     <link rel="manifest" href="/manifest.webmanifest">
 </head>
 <body>
-<div class="app-container">
+<!-- 自定义标题栏（仅Electron环境显示） -->
+<div class="titlebar" id="titlebar">
+    <div class="titlebar-drag"></div>
+    <div class="titlebar-title" id="titlebarTitle">AES-GCM 加密箱</div>
+    <div class="titlebar-buttons">
+        <button id="titlebarMinimize" class="titlebar-btn" title="最小化">
+            <svg width="12" height="12" viewBox="0 0 12 12"><line x1="0" y1="6" x2="12" y2="6" stroke="currentColor" stroke-width="1.5"/></svg>
+        </button>
+        <button id="titlebarMaximize" class="titlebar-btn" title="最大化">
+            <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+        </button>
+        <button id="titlebarClose" class="titlebar-btn titlebar-close" title="关闭">
+            <svg width="12" height="12" viewBox="0 0 12 12"><line x1="1" y1="1" x2="11" y2="11" stroke="currentColor" stroke-width="1.5"/><line x1="11" y1="1" x2="1" y2="11" stroke="currentColor" stroke-width="1.5"/></svg>
+        </button>
+    </div>
+</div>
+<div class="app-container" style="margin-top: 32px;">
     <div class="header">
         <h1><i class="icon" data-icon="shield"></i> AES-GCM 加密箱 · 多文件下载/预览</h1>
         <span style="color:var(--text-sec);"><i class="icon" data-icon="moon" id="themeToggle" title="切换深浅主题" style="cursor:pointer;"></i> 专业版 v2</span>

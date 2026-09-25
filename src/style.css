@@ -35,6 +35,26 @@
   --r-lg:1.5rem;
   --r-pill:2rem;
 }
+/* 自定义标题栏（Electron） */
+.titlebar{
+  position:fixed;top:0;left:0;right:0;height:32px;
+  background:var(--bg-activity);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 8px;z-index:9999;
+  -webkit-app-region:drag;user-select:none;
+}
+.titlebar-drag{flex:1;height:100%;}
+.titlebar-title{
+  position:absolute;left:50%;transform:translateX(-50%);
+  font-size:0.8rem;color:var(--text-sec);pointer-events:none;
+}
+.titlebar-buttons{display:flex;gap:0;-webkit-app-region:no-drag;}
+.titlebar-btn{
+  width:46px;height:32px;border:none;background:transparent;
+  color:var(--text);cursor:pointer;display:flex;align-items:center;
+  justify-content:center;transition:background .15s;
+}
+.titlebar-btn:hover{background:var(--selection-soft);}
+.titlebar-close:hover{background:#c42b1c;color:#fff;}
 body{background:var(--bg-app);margin:0;min-height:100vh;padding:1.5rem 1rem;color:var(--text);}
 .app-container{max-width:1600px;margin:0 auto;}
 .header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:1.5rem;}
