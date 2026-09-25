@@ -84,6 +84,25 @@ export default [
     },
   },
 
+  // Electron 主进程/预加载脚本（CommonJS）
+  {
+    files: ['electron/**/*.cjs'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        require: 'readonly',
+        module: 'readonly',
+        exports: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+      },
+    },
+    rules: {
+      'no-undef': 'off',
+      'no-unused-vars': 'off',
+    },
+  },
+
   // 关闭与 Prettier 冲突的格式类规则
   prettier,
 ];
