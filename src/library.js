@@ -71,8 +71,13 @@ function saveCache() {
   }
 }
 
-// 缓存是否仍可写（写入真实失败后会永久关闭）——供测试与排障观察
-export function isCacheEnabled() { return cacheEnabled; }
+// 缓存写入失败时的一次性提示（避免反复刷屏）
+let _cacheFailWarned = false;
+function warnCacheFailOnce() {
+  if (_cacheFailWarned) return;
+  _cacheFailWarned = true;
+  toast('文件库缓存写入失败（存储已满或隐私模式），刷新后文件将不再自动恢复', 'error');
+}
 
 // 回收一组条目的 blob URL（列表被整体替换/删除时调用，避免 URL 泄漏）
 function revokeItemsUrls(items) {
@@ -245,7 +250,23 @@ function getItemActions() {
       if (value && renameItem(item.id, value)) toast('已重命名');
     },
   });
-  actions.push({ icon: icon('trash-2'), title: '删除', onclick: (item) => removeItem(item.id) });
+  actions.push({
+    icon: icon('trash-2'), title: '删除',
+    onclick: async (item) => {
+      const res = await Swal.fire({
+        title: '确认删除',
+        text: `确定要删除「${item.name}」吗？`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+      });
+      if (res.isConfirmed) {
+        removeItem(item.id);
+        toast('已删除', 'success');
+      }
+    },
+  });
   return actions;
 }
 
