@@ -147,6 +147,7 @@ input[type="file"].visually-hidden{position:absolute;width:1px;height:1px;paddin
 .explorer-item.selected{background:var(--selection);border-color:var(--focus);}
 .explorer-item.dragging{opacity:0.5;}
 .explorer-item.drag-over{background:var(--selection-soft);border:2px dashed var(--focus);}
+.explorer-children{margin-top:4px;}
 .explorer-item-icon{font-size:32px;margin-bottom:4px;}
 .explorer-item-name{font-size:0.7rem;text-align:center;word-break:break-all;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .transfer-buttons{display:flex;flex-direction:column;justify-content:center;gap:8px;}

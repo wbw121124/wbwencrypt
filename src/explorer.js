@@ -223,85 +223,100 @@ function syncExplorerData() {
 
   content.innerHTML = '';
 
-  // 显示所有项目（包括文件夹和文件）
-  for (const item of leftItems) {
-    const el = document.createElement('div');
-    el.className = 'explorer-item';
-    el.draggable = true;
-    el.dataset.id = item.id;
-    el.dataset.type = item.isFolder ? 'folder' : 'file';
+  // 递归渲染项目（包括文件夹内容）
+  function renderItems(items, container, depth = 0) {
+    for (const item of items) {
+      const el = document.createElement('div');
+      el.className = 'explorer-item' + (item.isFolder ? ' folder' : '');
+      el.draggable = true;
+      el.dataset.id = item.id;
+      el.dataset.type = item.isFolder ? 'folder' : 'file';
+      el.style.paddingLeft = (depth * 20 + 8) + 'px';
 
-    const iconEl = document.createElement('div');
-    iconEl.className = 'explorer-item-icon';
-    if (item.isFolder) {
-      iconEl.innerHTML = icon('folder-open', 32);
-      iconEl.style.color = 'var(--code-blue)';
-    } else {
-      const ext = item.filePath?.split('.').pop()?.toLowerCase() || '';
-      const iconMap = {
-        jpg: 'image', jpeg: 'image', png: 'image', gif: 'image',
-        mp4: 'film', webm: 'film', avi: 'film',
-        txt: 'file-text', html: 'code', js: 'code', json: 'file-text',
-      };
-      iconEl.innerHTML = icon(iconMap[ext] || 'file', 32);
-    }
-
-    const nameEl = document.createElement('div');
-    nameEl.className = 'explorer-item-name';
-    nameEl.innerText = item.name;
-    nameEl.title = item.name;
-
-    el.appendChild(iconEl);
-    el.appendChild(nameEl);
-
-    // 点击选中
-    el.onclick = (e) => {
-      if (e.ctrlKey) {
-        if (selectedItems.has(item.id)) {
-          selectedItems.delete(item.id);
-        } else {
-          selectedItems.add(item.id);
-        }
-        renderExplorerSelection();
-      } else if (e.shiftKey) {
-        selectedItems.add(item.id);
-        renderExplorerSelection();
-      } else {
-        selectedItems.clear();
-        selectedItems.add(item.id);
-        renderExplorerSelection();
-      }
-    };
-
-    // 双击
-    el.ondblclick = () => {
+      const iconEl = document.createElement('div');
+      iconEl.className = 'explorer-item-icon';
       if (item.isFolder) {
-        // 文件夹：展开/折叠（简化：暂时只显示提示）
-        toast(`已选中文件夹「${item.name}」`);
+        iconEl.innerHTML = item.expanded ? icon('folder-open', 32) : icon('folder', 32);
+        iconEl.style.color = 'var(--code-blue)';
       } else {
-        // 文件：添加到待加密列表
-        libraryModule.moveToRight(item.id);
-        toast(`已添加「${item.name}」到待加密列表`);
+        const ext = item.filePath?.split('.').pop()?.toLowerCase() || '';
+        const iconMap = {
+          jpg: 'image', jpeg: 'image', png: 'image', gif: 'image',
+          mp4: 'film', webm: 'film', avi: 'film',
+          txt: 'file-text', html: 'code', js: 'code', json: 'file-text',
+        };
+        iconEl.innerHTML = icon(iconMap[ext] || 'file', 32);
       }
-    };
 
-    // 拖拽开始
-    el.ondragstart = (e) => {
-      e.dataTransfer.setData('text/plain', item.id.toString());
-      e.dataTransfer.effectAllowed = 'move';
-      el.classList.add('dragging');
-    };
+      const nameEl = document.createElement('div');
+      nameEl.className = 'explorer-item-name';
+      nameEl.innerText = item.name;
+      nameEl.title = item.name;
 
-    // 拖拽结束
-    el.ondragend = () => {
-      el.classList.remove('dragging');
-      document.querySelectorAll('.explorer-item.drag-over').forEach(item => {
-        item.classList.remove('drag-over');
-      });
-    };
+      el.appendChild(iconEl);
+      el.appendChild(nameEl);
 
-    content.appendChild(el);
+      // 点击选中
+      el.onclick = (e) => {
+        if (e.ctrlKey) {
+          if (selectedItems.has(item.id)) {
+            selectedItems.delete(item.id);
+          } else {
+            selectedItems.add(item.id);
+          }
+          renderExplorerSelection();
+        } else if (e.shiftKey) {
+          selectedItems.add(item.id);
+          renderExplorerSelection();
+        } else {
+          selectedItems.clear();
+          selectedItems.add(item.id);
+          renderExplorerSelection();
+        }
+      };
+
+      // 双击
+      el.ondblclick = () => {
+        if (item.isFolder) {
+          // 展开/折叠文件夹
+          item.expanded = !item.expanded;
+          syncExplorerData();
+        } else {
+          // 文件：添加到待加密列表
+          libraryModule.moveToRight(item.id);
+          toast(`已添加「${item.name}」到待加密列表`);
+        }
+      };
+
+      // 拖拽开始
+      el.ondragstart = (e) => {
+        e.dataTransfer.setData('text/plain', item.id.toString());
+        e.dataTransfer.effectAllowed = 'move';
+        el.classList.add('dragging');
+      };
+
+      // 拖拽结束
+      el.ondragend = () => {
+        el.classList.remove('dragging');
+        document.querySelectorAll('.explorer-item.drag-over').forEach(el => {
+          el.classList.remove('drag-over');
+        });
+      };
+
+      container.appendChild(el);
+
+      // 如果是文件夹且展开，递归渲染子项
+      if (item.isFolder && item.expanded && item.children) {
+        const childrenContainer = document.createElement('div');
+        childrenContainer.className = 'explorer-children';
+        childrenContainer.style.marginLeft = '20px';
+        renderItems(item.children, childrenContainer, depth + 1);
+        container.appendChild(childrenContainer);
+      }
+    }
   }
+
+  renderItems(leftItems, content);
 
   // 更新面包屑
   updateBreadcrumb(leftItems);
@@ -337,46 +352,38 @@ function setupExplorerDrop(container) {
     if (isNaN(sourceId)) return;
 
     const target = e.target.closest('.explorer-item');
-    if (target) {
-      const targetId = parseInt(target.dataset.id);
-      if (sourceId === targetId) return;
+    if (!target) return;
 
-      const items = libraryModule.getLeftItems();
-      const sourceItem = items.find(i => i.id === sourceId);
-      const targetItem = items.find(i => i.id === targetId);
+    const targetId = parseInt(target.dataset.id);
+    if (sourceId === targetId) return;
 
-      if (sourceItem && targetItem) {
-        // 移动到目标文件夹内或之后
-        const sourceIndex = items.indexOf(sourceItem);
-        const targetIndex = items.indexOf(targetItem);
+    const items = libraryModule.getLeftItems();
+    const sourceItem = findItemById(items, sourceId);
+    const targetItem = findItemById(items, targetId);
 
-        if (sourceIndex !== -1 && targetIndex !== -1) {
-          // 移除源项目
-          items.splice(sourceIndex, 1);
+    if (!sourceItem || !targetItem) return;
 
-          // 计算新的目标索引
-          let newIndex = targetIndex;
-          if (sourceIndex < targetIndex) {
-            newIndex--;
-          }
+    // 移除源项目
+    removeFromTree(items, sourceId);
 
-          // 如果是文件夹，添加到文件夹内
-          if (targetItem.isFolder) {
-            libraryModule.addChildToFolder(targetId, sourceItem);
-          } else {
-            items.splice(newIndex, 0, sourceItem);
-          }
+    // 计算新的目标位置
+    let newIndex = findItemIndex(items, targetId);
+    if (sourceId < targetId) newIndex--;
 
-          syncExplorerData();
-          toast(`已移动「${sourceItem.name}」`);
-        }
+    // 如果是文件夹，添加到文件夹内
+    if (targetItem.isFolder) {
+      const folder = findFolderById(items, targetId);
+      if (folder) {
+        if (!folder.children) folder.children = [];
+        folder.children.push(sourceItem);
       }
+    } else {
+      // 插入到目标位置
+      items.splice(newIndex, 0, sourceItem);
     }
 
-    // 清除所有拖拽状态
-    document.querySelectorAll('.explorer-item.drag-over').forEach(item => {
-      item.classList.remove('drag-over');
-    });
+    syncExplorerData();
+    toast(`已移动「${sourceItem.name}」`);
   };
 }
 
@@ -499,4 +506,57 @@ function renderExplorerSelection() {
     const id = parseInt(el.dataset.id);
     el.classList.toggle('selected', selectedItems.has(id));
   });
+}
+
+// 递归查找项目
+function findItemById(items, id) {
+  for (const item of items) {
+    if (item.id === id) return item;
+    if (item.children) {
+      const found = findItemById(item.children, id);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+// 递归移除项目
+function removeFromTree(items, id) {
+  const idx = items.findIndex(i => i.id === id);
+  if (idx !== -1) {
+    items.splice(idx, 1);
+    return true;
+  }
+  for (const item of items) {
+    if (item.children && removeFromTree(item.children, id)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// 递归查找文件夹
+function findFolderById(items, id) {
+  for (const item of items) {
+    if (item.id === id && item.isFolder) return item;
+    if (item.children) {
+      const found = findFolderById(item.children, id);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+// 递归查找项目索引
+function findItemIndex(items, id, parent = null) {
+  for (let i = 0; i < items.length; i++) {
+    if (items[i].id === id) {
+      return parent ? parent.children.indexOf(items[i]) : i;
+    }
+    if (items[i].children) {
+      const found = findItemIndex(items[i].children, id, items[i]);
+      if (found !== -1) return found;
+    }
+  }
+  return -1;
 }
