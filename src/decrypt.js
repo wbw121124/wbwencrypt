@@ -178,7 +178,7 @@ export function initDecrypt() {
       const r = await decryptOne({ file: decryptFile.files[0], usePassword, inputStr });
       // 功能4：记忆成功解密的密钥凭据（仅密钥模式，密码模式不落盘）
       if (!usePassword) rememberDecryptSuccess({ type: 'key', keyB64: inputStr });
-      badge.innerText = r.badge; badge.className = 'status-badge ' + r.cls;
+      badge.className = 'status-badge ' + r.cls; badge.innerHTML = r.badge;
       verifyMsg.innerHTML = `<span>${r.msg}</span>`;
       preview.style.display = 'block';
       await renderFileGrid(r.files, preview);
