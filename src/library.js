@@ -15,6 +15,57 @@ let rightItems = [];
 let nextId = 1;
 let cacheEnabled = true;
 
+// ---- 文件夹支持 ----
+export function createFolder(name) {
+  const folder = {
+    id: nextId++,
+    name: name.trim() || '新建文件夹',
+    isFolder: true,
+    expanded: false,
+    children: [],
+  };
+  leftItems.push(folder);
+  render();
+  return folder;
+}
+
+export function getFolderById(id) {
+  return leftItems.find(i => i.id === id && i.isFolder) || rightItems.find(i => i.id === id && i.isFolder);
+}
+
+export function addChildToFolder(folderId, childItem) {
+  const folder = getFolderById(folderId);
+  if (folder && folder.isFolder) {
+    folder.children.push(childItem);
+    if (!folder.expanded) folder.expanded = true;
+    render();
+    return true;
+  }
+  return false;
+}
+
+export function removeChildFromFolder(folderId, childId) {
+  const folder = getFolderById(folderId);
+  if (folder && folder.isFolder) {
+    const idx = folder.children.findIndex(c => c.id === childId);
+    if (idx !== -1) {
+      const removed = folder.children.splice(idx, 1);
+      revokeItemsUrls(removed);
+      render();
+      return true;
+    }
+  }
+  return false;
+}
+
+export function toggleFolder(id) {
+  const folder = leftItems.find(i => i.id === id && i.isFolder) || rightItems.find(i => i.id === id && i.isFolder);
+  if (folder && folder.isFolder) {
+    folder.expanded = !folder.expanded;
+    render();
+  }
+}
+
 // ---- 类型工具 ----
 export function isEditableType(mime, filename) {
   return mime === 'text/html' || mime === 'text/plain' ||
@@ -39,13 +90,27 @@ function dataUrlFromItem(item) {
 
 // 序列化单个条目（arrayBuffer -> base64；dataUrl 不持久化，用 arrayBuffer 重建）
 function serializeItem(item) {
+  if (item.isFolder) {
+    return {
+      id: item.id, name: item.name, isFolder: true, expanded: item.expanded,
+      children: item.children.map(c => serializeItem(c)),
+    };
+  }
   return { id: item.id, name: item.name, mime: item.mime, hashHex: item.hashHex, bufferB64: arrBufToBase64(item.arrayBuffer) };
 }
 function deserializeItem(s) {
+  if (s.isFolder) {
+    return {
+      id: s.id, name: s.name, isFolder: true, expanded: s.expanded || false,
+      children: (s.children || []).map(c => deserializeItem(c)),
+      arrayBuffer: new ArrayBuffer(0), dataUrl: null, mime: '', hashHex: '',
+    };
+  }
   return {
     id: s.id, name: s.name, mime: s.mime, hashHex: s.hashHex || '',
     arrayBuffer: base64ToArrBuf(s.bufferB64),
     dataUrl: null, // 下面重建
+    isFolder: false,
   };
 }
 
@@ -190,6 +255,18 @@ export function clearRight() {
   render();
 }
 export function removeItem(id) {
+  // 先从文件夹中移除
+  for (const folder of [...leftItems, ...rightItems]) {
+    if (folder.isFolder && folder.children) {
+      const idx = folder.children.findIndex(c => c.id === id);
+      if (idx !== -1) {
+        const removed = folder.children.splice(idx, 1);
+        revokeItemsUrls(removed);
+        render();
+        return;
+      }
+    }
+  }
   const removed = [...leftItems, ...rightItems].filter(i => i.id === id);
   leftItems = leftItems.filter(i => i.id !== id);
   rightItems = rightItems.filter(i => i.id !== id);
@@ -240,15 +317,153 @@ function makeTransferItem(item, isRight, actions) {
   return div;
 }
 
+function makeFolderItem(folder, isRight) {
+  const div = document.createElement('div');
+  div.className = 'transfer-folder';
+  div.dataset.folderId = folder.id;
+
+  // 展开/折叠按钮 + 文件夹名称
+  const header = document.createElement('div');
+  header.className = 'transfer-folder-header';
+  const toggleBtn = document.createElement('button');
+  toggleBtn.className = 'btn-sm folder-toggle';
+  toggleBtn.innerHTML = folder.expanded ? icon('chevron-down', 14) : icon('chevron-right', 14);
+  toggleBtn.style.marginInlineEnd = '4px';
+  toggleBtn.onclick = (e) => { e.stopPropagation(); toggleFolder(folder.id); };
+  header.appendChild(toggleBtn);
+
+  const iconEl = document.createElement('div');
+  iconEl.innerHTML = icon('folder-open', 20);
+  iconEl.style.color = 'var(--code-blue)';
+  header.appendChild(iconEl);
+
+  const nameSpan = document.createElement('span');
+  nameSpan.innerText = `${folder.name} (${folder.children.length})`;
+  nameSpan.style.flex = '1';
+  header.appendChild(nameSpan);
+
+  div.appendChild(header);
+
+  // 子项容器
+  const childrenDiv = document.createElement('div');
+  childrenDiv.className = 'transfer-folder-children';
+  if (folder.expanded) {
+    childrenDiv.style.display = 'block';
+    for (const child of folder.children) {
+      childrenDiv.appendChild(makeTransferItem(child, isRight, getItemActions()));
+    }
+  } else {
+    childrenDiv.style.display = 'none';
+  }
+  div.appendChild(childrenDiv);
+
+  // 操作按钮
+  const btnGroup = document.createElement('div');
+  btnGroup.style.display = 'flex'; btnGroup.style.gap = '4px';
+
+  // 新建子文件夹
+  const newFolderBtn = document.createElement('button');
+  newFolderBtn.innerHTML = icon('folder-plus', 14);
+  newFolderBtn.className = 'btn-sm';
+  newFolderBtn.title = '新建子文件夹';
+  newFolderBtn.onclick = async (e) => {
+    e.stopPropagation();
+    const { value } = await Swal.fire({
+      title: '新建子文件夹',
+      input: 'text',
+      inputValue: '新建文件夹',
+      showCancelButton: true,
+      confirmButtonText: '创建',
+      cancelButtonText: '取消',
+      inputValidator: (v) => (v && v.trim()) ? null : '文件夹名不能为空',
+    });
+    if (value) {
+      const newFolder = createFolder(value);
+      newFolder.parentId = folder.id;
+      // 添加到当前文件夹
+      const targetFolder = getFolderById(folder.id);
+      if (targetFolder) {
+        targetFolder.children.push(newFolder);
+        if (!targetFolder.expanded) targetFolder.expanded = true;
+        render();
+        toast('文件夹已创建');
+      }
+    }
+  };
+  btnGroup.appendChild(newFolderBtn);
+
+  // 删除文件夹（清空子项）
+  const deleteBtn = document.createElement('button');
+  deleteBtn.innerHTML = icon('trash-2', 14);
+  deleteBtn.className = 'btn-sm';
+  deleteBtn.title = '删除文件夹';
+  deleteBtn.onclick = async (e) => {
+    e.stopPropagation();
+    const res = await Swal.fire({
+      title: '确认删除文件夹',
+      text: `确定要删除「${folder.name}」及其 ${folder.children.length} 个子项吗？`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+    });
+    if (res.isConfirmed) {
+      removeFolder(folder.id);
+      toast('已删除文件夹', 'success');
+    }
+  };
+  btnGroup.appendChild(deleteBtn);
+
+  div.appendChild(btnGroup);
+
+  // 点击空白处展开/折叠
+  div.querySelector('.transfer-folder-header').onclick = (e) => {
+    if (e.target.closest('.folder-toggle')) return;
+    toggleFolder(folder.id);
+  };
+
+  return div;
+}
+
+function removeFolder(id) {
+  const remove = (items) => {
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].id === id) {
+        const removed = items.splice(i, 1);
+        revokeItemsUrls(removed[0].children || [removed[0]]);
+        return true;
+      }
+      if (items[i].isFolder && items[i].children) {
+        if (remove(items[i].children)) return true;
+      }
+    }
+    return false;
+  };
+  remove(leftItems) || remove(rightItems);
+  render();
+}
+
 export function render() {
   const leftDiv = $('leftList'), rightDiv = $('rightList');
   const leftC = $('leftCount'), rightC = $('rightCount');
   if (!leftDiv || !rightDiv) return;
   leftDiv.innerHTML = ''; rightDiv.innerHTML = '';
-  leftItems.forEach(it => leftDiv.appendChild(makeTransferItem(it, false, getItemActions())));
-  rightItems.forEach(it => rightDiv.appendChild(makeTransferItem(it, true, getItemActions())));
-  leftC.innerText = leftItems.length;
-  rightC.innerText = rightItems.length;
+
+  // 扁平化计数（不包含文件夹内部）
+  function renderItems(items, container) {
+    for (const item of items) {
+      if (item.isFolder) {
+        container.appendChild(makeFolderItem(item, false));
+      } else {
+        container.appendChild(makeTransferItem(item, false, getItemActions()));
+      }
+    }
+  }
+
+  renderItems(leftItems, leftDiv);
+  renderItems(rightItems, rightDiv);
+  leftC.innerText = leftItems.filter(i => !i.isFolder).length;
+  rightC.innerText = rightItems.filter(i => !i.isFolder).length;
   saveCache(); // 功能7：任意变更后持久化
 }
 
@@ -323,6 +538,22 @@ export function initLibrary({ hooks }) {
       toast('添加文件夹失败：' + (err && err.message ? err.message : '未知错误'), 'error');
     } finally { e.target.value = ''; }
   });
+  // 新建文件夹按钮
+  $('addFolderBtnClick').onclick = async () => {
+    const { value } = await Swal.fire({
+      title: '新建文件夹',
+      input: 'text',
+      inputValue: '新建文件夹',
+      showCancelButton: true,
+      confirmButtonText: '创建',
+      cancelButtonText: '取消',
+      inputValidator: (v) => (v && v.trim()) ? null : '文件夹名不能为空',
+    });
+    if (value) {
+      createFolder(value);
+      toast('文件夹已创建');
+    }
+  };
   $('toRightBtn').onclick = () => { if (leftItems.length) moveToRight(leftItems[0].id); };
   $('toLeftBtn').onclick = () => { if (rightItems.length) moveToLeft(rightItems[0].id); };
   $('toAllRightBtn').onclick = moveAllRight;

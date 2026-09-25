@@ -64,6 +64,11 @@ input[type="file"].visually-hidden{position:absolute;width:1px;height:1px;paddin
 .transfer-item img{width:40px;height:40px;object-fit:cover;border-radius:6px;}
 .transfer-item .doc-icon{font-size:28px;min-width:40px;text-align:center;}
 .transfer-item span{flex:1;font-size:0.7rem;word-break:break-all;}
+/* 文件夹样式 */
+.transfer-folder{border:1px solid var(--border);border-radius:var(--r-md);margin-bottom:6px;overflow:hidden;}
+.transfer-folder-header{display:flex;align-items:center;gap:4px;padding:8px;background:var(--bg-activity);cursor:pointer;transition:background .15s;}
+.transfer-folder-header:hover{background:var(--selection-soft);}
+.transfer-folder-children{padding-left:16px;background:var(--bg-editor);}
 .transfer-buttons{display:flex;flex-direction:column;justify-content:center;gap:8px;}
 .transfer-buttons button{background:var(--accent);border:none;border-radius:2rem;padding:6px 12px;color:#fff;cursor:pointer;font-weight:bold;transition:background .15s;}
 .transfer-buttons button:hover{background:var(--accent-hover);}
