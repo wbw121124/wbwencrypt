@@ -519,7 +519,7 @@ export function render() {
     e.dataTransfer.setData('application/x-source-index', el.dataset.index);
   }
 
-  function handleDragEnd(e) {
+  function handleDragEnd() {
     document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
     document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
     document.querySelectorAll('.drop-before, .drop-after').forEach(el => {
@@ -572,7 +572,6 @@ export function render() {
     if (!targetList) return;
 
     const targetIsRight = targetList === rightDiv;
-    const targetId = parseInt(targetList.dataset.targetId || e.target.closest('.transfer-item, .transfer-folder')?.dataset.id);
 
     // 找到目标位置
     const targetItems = targetIsRight ? rightItems : leftItems;
