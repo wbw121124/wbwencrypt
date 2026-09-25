@@ -11,6 +11,7 @@ vi.mock('sweetalert2', () => ({ default: { fire: vi.fn() } }));
 
 // ---- 最小 DOM 桩（render 只需要 innerHTML / innerText / appendChild）----
 function fakeNode(tag = 'div') {
+  const dataset = {};
   return {
     tagName: String(tag).toUpperCase(),
     style: {},
@@ -19,11 +20,13 @@ function fakeNode(tag = 'div') {
     innerText: '',
     title: '',
     children: [],
+    dataset,
     onclick: null,
     appendChild(child) { this.children.push(child); return child; },
     contains(target) { return this.children.includes(target); },
     addEventListener() {},
     remove() {},
+    getBoundingClientRect() { return { top: 0, left: 0, width: 100, height: 40 }; },
   };
 }
 

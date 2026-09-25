@@ -419,11 +419,13 @@ function showContextMenu(x, y, item, actions) {
 }
 
 // 点击其他地方关闭菜单
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('.action-menu')) {
-    closeAllMenus();
-  }
-});
+if (typeof document !== 'undefined' && document.addEventListener) {
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.action-menu')) {
+      closeAllMenus();
+    }
+  });
+}
 
 function makeFolderItem(folder, isRight) {
   const div = document.createElement('div');
