@@ -19,14 +19,17 @@
         <div class="card card-wide">
             <div class="card-title"><i class="icon" data-icon="folder-open"></i> 文件库 & 待加密列表</div>
             <div class="file-area" id="dropZone">
-                <div class="flex-row">
-                    <label class="file-label" for="addFilesBtn"><i class="icon" data-icon="plus"></i> 添加文件(图/视频/html/txt)</label>
-                    <input type="file" id="addFilesBtn" accept="image/*,video/*,.html,.txt,.htm,.text/plain" multiple class="visually-hidden">
-                    <input type="file" id="addFolderBtn" webkitdirectory class="visually-hidden">
-                    <button id="addFolderBtnClick" class="btn-outline btn-sm"><i class="icon" data-icon="folder-plus"></i> 新建文件夹</button>
-                    <button id="transferCameraBtn" class="btn-outline btn-sm"><i class="icon" data-icon="camera"></i> 拍照/录像</button>
-                    <button id="openEditorBtn" class="btn-outline btn-sm"><i class="icon" data-icon="file-plus"></i> 新建文本/HTML</button>
-                </div>
+                    <div class="flex-row">
+                        <label class="file-label" for="addFilesBtn"><i class="icon" data-icon="plus"></i> 添加文件</label>
+                        <input type="file" id="addFilesBtn" accept="image/*,video/*,.html,.txt,.htm,.text/plain" multiple class="visually-hidden">
+                        <button id="openFolderBtn" class="btn-outline btn-sm" title="打开本地文件夹"><i class="icon" data-icon="folder-open"></i> 打开文件夹</button>
+                        <button id="addFolderBtnClick" class="btn-outline btn-sm"><i class="icon" data-icon="folder-plus"></i> 新建文件夹</button>
+                        <button id="transferCameraBtn" class="btn-outline btn-sm"><i class="icon" data-icon="camera"></i> 拍照</button>
+                        <button id="openEditorBtn" class="btn-outline btn-sm"><i class="icon" data-icon="file-plus"></i> 新建文档</button>
+                        <span style="margin-left:auto;color:var(--text-sec);font-size:0.75rem;" id="viewModeLabel">列表</span>
+                        <button id="prevViewBtn" class="btn-sm" title="上一视图"><i class="icon" data-icon="chevron-left"></i></button>
+                        <button id="nextViewBtn" class="btn-sm" title="下一视图"><i class="icon" data-icon="chevron-right"></i></button>
+                    </div>
                 <div id="dropHint" class="small-note" style="display:none;">松开即可添加文件</div>
                 <div class="transfer-container">
                     <div class="transfer-panel"><h4><i class="icon" data-icon="list"></i> 文件库 <span id="leftCount">0</span></h4><div id="leftList" class="transfer-list"></div></div>

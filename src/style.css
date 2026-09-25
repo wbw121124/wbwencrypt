@@ -68,7 +68,19 @@ input[type="file"].visually-hidden{position:absolute;width:1px;height:1px;paddin
 .transfer-folder{border:1px solid var(--border);border-radius:var(--r-md);margin-bottom:6px;overflow:hidden;}
 .transfer-folder-header{display:flex;align-items:center;gap:4px;padding:8px;background:var(--bg-activity);cursor:pointer;transition:background .15s;}
 .transfer-folder-header:hover{background:var(--selection-soft);}
-.transfer-folder-children{padding-left:16px;background:var(--bg-editor);}
+.transfer-folder-children{padding:4px;background:var(--bg-editor);}
+/* 拖拽样式 */
+.transfer-item.dragging,.transfer-folder.dragging{opacity:0.5;border:2px dashed var(--focus);}
+.transfer-list.drag-over{background:var(--selection-soft);border:2px dashed var(--focus);}
+/* 视图模式 */
+.view-grid .transfer-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;}
+.view-grid .transfer-item{flex-direction:column;text-align:center;padding:8px;}
+.view-grid .transfer-item img,.view-grid .transfer-item .doc-icon{width:48px;height:48px;font-size:32px;}
+.view-grid .transfer-item span{font-size:0.65rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;}
+.view-grid .transfer-item .btn-group{display:none;}
+.view-list .transfer-item{flex-direction:row;}
+.view-details .transfer-item{display:grid;grid-template-columns:40px 1fr 80px 60px;align-items:center;gap:8px;}
+.view-details .transfer-item .btn-group{display:flex;}
 .transfer-buttons{display:flex;flex-direction:column;justify-content:center;gap:8px;}
 .transfer-buttons button{background:var(--accent);border:none;border-radius:2rem;padding:6px 12px;color:#fff;cursor:pointer;font-weight:bold;transition:background .15s;}
 .transfer-buttons button:hover{background:var(--accent-hover);}

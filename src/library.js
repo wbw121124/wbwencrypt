@@ -320,8 +320,6 @@ function makeTransferItem(item, isRight, actions) {
 function makeFolderItem(folder, isRight) {
   const div = document.createElement('div');
   div.className = 'transfer-folder';
-  div.dataset.folderId = folder.id;
-
   // 展开/折叠按钮 + 文件夹名称
   const header = document.createElement('div');
   header.className = 'transfer-folder-header';
@@ -449,22 +447,60 @@ export function render() {
   if (!leftDiv || !rightDiv) return;
   leftDiv.innerHTML = ''; rightDiv.innerHTML = '';
 
-  // 扁平化计数（不包含文件夹内部）
+  function setupDragForElement(el, id) {
+    try {
+      el.draggable = true;
+      if (el.dataset) el.dataset.itemId = id;
+    } catch (e) { /* 测试环境可能不支持 */ }
+  }
+
   function renderItems(items, container) {
     for (const item of items) {
       if (item.isFolder) {
-        container.appendChild(makeFolderItem(item, false));
+        const folderEl = makeFolderItem(item, false);
+        setupDragForElement(folderEl, item.id);
+        container.appendChild(folderEl);
       } else {
-        container.appendChild(makeTransferItem(item, false, getItemActions()));
+        const itemEl = makeTransferItem(item, false, getItemActions());
+        setupDragForElement(itemEl, item.id);
+        container.appendChild(itemEl);
       }
     }
   }
 
   renderItems(leftItems, leftDiv);
   renderItems(rightItems, rightDiv);
+
+  // 为列表设置放置目标（仅浏览器环境）
+  [leftDiv, rightDiv].forEach(list => {
+    if (!list || typeof list.addEventListener !== 'function') return;
+    list.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      list.classList.add('drag-over');
+    });
+    list.addEventListener('dragleave', (e) => {
+      if (!list.contains(e.relatedTarget)) list.classList.remove('drag-over');
+    });
+    list.addEventListener('drop', (e) => {
+      e.preventDefault();
+      list.classList.remove('drag-over');
+      const id = parseInt(e.dataTransfer.getData('text/plain'));
+      if (isNaN(id)) return;
+      const moved = [...leftItems, ...rightItems].find(i => i.id === id);
+      if (!moved) return;
+      const targetIsRight = list === rightDiv;
+      const currentIsRight = rightItems.some(i => i.id === id);
+      if (currentIsRight !== targetIsRight) {
+        if (targetIsRight) moveToRight(id);
+        else moveToLeft(id);
+      }
+    });
+  });
+
   leftC.innerText = leftItems.filter(i => !i.isFolder).length;
   rightC.innerText = rightItems.filter(i => !i.isFolder).length;
-  saveCache(); // 功能7：任意变更后持久化
+  saveCache();
 }
 
 // 动作钩子（由 main.js 注册）
@@ -514,6 +550,73 @@ function getItemActions() {
   return actions;
 }
 
+// ---- 视图模式 ----
+let currentViewMode = localStorage.getItem('wbw-view-mode') || 'list';
+const viewModes = ['list', 'grid', 'details'];
+const viewNames = { list: '列表', grid: '网格', details: '详情' };
+
+export function setViewMode(mode) {
+  if (!viewModes.includes(mode)) return;
+  currentViewMode = mode;
+  localStorage.setItem('wbw-view-mode', mode);
+  updateViewModeUI();
+  render();
+}
+
+export function getNextViewMode() {
+  const idx = viewModes.indexOf(currentViewMode);
+  return viewModes[(idx + 1) % viewModes.length];
+}
+
+export function getPrevViewMode() {
+  const idx = viewModes.indexOf(currentViewMode);
+  return viewModes[(idx - 1 + viewModes.length) % viewModes.length];
+}
+
+function updateViewModeUI() {
+  const panel = document.querySelector('.transfer-container');
+  if (!panel) return;
+  panel.className = 'transfer-container view-' + currentViewMode;
+  const label = $('viewModeLabel');
+  if (label) label.innerText = viewNames[currentViewMode];
+}
+
+// ---- 打开本地文件夹（File System Access API）----
+export async function openLocalFolder() {
+  if (!window.showDirectoryPicker) {
+    toast('当前浏览器不支持文件夹访问，请使用 Chrome/Edge', 'error');
+    return;
+  }
+  try {
+    const dirHandle = await window.showDirectoryPicker();
+    toast(`正在读取文件夹「${dirHandle.name}」...`, 'info', 2000);
+    const files = await readDirectoryHandle(dirHandle);
+    if (files.length === 0) return;
+    await addFilesToLeft(files);
+    toast(`已添加 ${files.length} 个文件`, 'success');
+  } catch (e) {
+    if (e.name !== 'AbortError') {
+      toast('打开文件夹失败：' + (e && e.message ? e.message : '未知错误'), 'error');
+    }
+  }
+}
+
+async function readDirectoryHandle(dirHandle, path = '') {
+  const files = [];
+  for await (const entry of dirHandle.values()) {
+    const entryPath = path ? `${path}/${entry.name}` : entry.name;
+    if (entry.kind === 'file') {
+      const file = await entry.getFile();
+      file.webkitRelativePath = entryPath;
+      files.push(file);
+    } else if (entry.kind === 'directory') {
+      const subFiles = await readDirectoryHandle(entry, entryPath);
+      files.push(...subFiles);
+    }
+  }
+  return files;
+}
+
 // ---- 初始化 ----
 export function initLibrary({ hooks }) {
   registerActions(hooks);
@@ -525,19 +628,8 @@ export function initLibrary({ hooks }) {
       .catch((err) => toast('添加文件失败：' + (err && err.message ? err.message : '未知错误'), 'error'))
       .finally(() => { e.target.value = ''; });
   });
-  // 文件夹选择（webkitdirectory）
-  const folderBtn = $('addFolderBtn');
-  folderBtn.addEventListener('change', async (e) => {
-    if (!e.target.files.length) return;
-    const files = Array.from(e.target.files);
-    toast(`正在读取文件夹 ${files[0].webkitRelativePath.split('/')[0]}...`, 'info', 1500);
-    try {
-      await addFilesToLeft(files);
-      toast(`已添加 ${files.length} 个文件`, 'success');
-    } catch (err) {
-      toast('添加文件夹失败：' + (err && err.message ? err.message : '未知错误'), 'error');
-    } finally { e.target.value = ''; }
-  });
+  // 打开本地文件夹按钮
+  $('openFolderBtn').onclick = openLocalFolder;
   // 新建文件夹按钮
   $('addFolderBtnClick').onclick = async () => {
     const { value } = await Swal.fire({
@@ -554,14 +646,17 @@ export function initLibrary({ hooks }) {
       toast('文件夹已创建');
     }
   };
+  // 视图切换
+  $('prevViewBtn').onclick = () => setViewMode(getPrevViewMode());
+  $('nextViewBtn').onclick = () => setViewMode(getNextViewMode());
+  // 初始化视图
+  updateViewModeUI();
   $('toRightBtn').onclick = () => { if (leftItems.length) moveToRight(leftItems[0].id); };
   $('toLeftBtn').onclick = () => { if (rightItems.length) moveToLeft(rightItems[0].id); };
   $('toAllRightBtn').onclick = moveAllRight;
   wireDragDrop('dropZone', async (items) => {
-    // items 可能是 File 数组（普通文件）或 DirectoryEntry（文件夹）
     let files = [];
     if (items && typeof items.name === 'string' && items.isDirectory !== undefined) {
-      // 是 DirectoryEntry
       try {
         files = await readDirectoryEntries(items);
       } catch (e) {
