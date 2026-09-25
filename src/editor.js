@@ -2,7 +2,7 @@
 // editor.js —— 文本/HTML 编辑器（新建 + 就地编辑保存）
 // ============================================================================
 import { $, toast, hideModal, showModal } from './ui.js';
-import { addFileToLeft } from './library.js';
+import { addFileToLeft, setItemDataUrl } from './library.js';
 
 let currentEditingItem = null;
 
@@ -63,7 +63,7 @@ export function initEditor() {
       const blob = new Blob([newContent], { type: newMime });
       const newBuf = await blob.arrayBuffer();
       currentEditingItem.arrayBuffer = newBuf;
-      currentEditingItem.dataUrl = URL.createObjectURL(blob);
+      setItemDataUrl(currentEditingItem, blob); // 替换预览 URL（内部回收旧 URL）
       currentEditingItem.mime = newMime;
       currentEditingItem.name = newName;
       currentEditingItem.hashHex = '';

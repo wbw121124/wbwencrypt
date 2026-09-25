@@ -3,7 +3,7 @@
 //   功能6：重命名文件
 //   功能7：文件库持久化缓存（localStorage，刷新后恢复）
 // ============================================================================
-import { $, toast, wireDragDrop } from './ui.js';
+import { $, toast, wireDragDrop, lsGet, lsSet, lsDel } from './ui.js';
 import { sha256, hexFromBytes, arrBufToBase64, base64ToArrBuf } from './crypto.js';
 import { icon } from './icons.js';
 import Swal from 'sweetalert2';
@@ -23,9 +23,7 @@ export function isEditableType(mime, filename) {
 export function isImageType(mime) { return mime.startsWith('image/'); }
 export function isVideoType(mime) { return mime.startsWith('video/'); }
 
-// ---- 实例缓存存储 ----
-function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
-function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
+// ---- 实例缓存存储（lsGet/lsSet 统一收敛在 ui.js，此处只做业务降级）----
 
 // 缓存写入失败只提示一次，避免每次列表变更都刷屏
 let warnedCacheFail = false;
@@ -52,6 +50,8 @@ function deserializeItem(s) {
 }
 
 // 功能7：保存文件库缓存
+// 注意：只有 lsSet 真实返回 false（写入抛异常）才关闭缓存；
+// 写入成功时 lsSet 返回 true，禁止把成功路径误判为失败（回归用例见 tests/library.test.js）。
 function saveCache() {
   if (!cacheEnabled) return;
   try {
@@ -71,6 +71,21 @@ function saveCache() {
   }
 }
 
+// 缓存是否仍可写（写入真实失败后会永久关闭）——供测试与排障观察
+export function isCacheEnabled() { return cacheEnabled; }
+
+// 回收一组条目的 blob URL（列表被整体替换/删除时调用，避免 URL 泄漏）
+function revokeItemsUrls(items) {
+  for (const it of items) if (it && it.dataUrl) URL.revokeObjectURL(it.dataUrl);
+}
+
+// 统一替换条目预览 URL：先回收旧 URL 再建新的（编辑器/图片编辑器保存时共用）
+export function setItemDataUrl(item, blob) {
+  if (item.dataUrl) URL.revokeObjectURL(item.dataUrl);
+  item.dataUrl = URL.createObjectURL(blob);
+  return item.dataUrl;
+}
+
 // 功能7：恢复文件库缓存（页面加载时调用）
 export function restoreCache() {
   try {
@@ -78,6 +93,9 @@ export function restoreCache() {
     if (!raw) return false;
     const payload = JSON.parse(raw);
     if (payload && Array.isArray(payload.left) && Array.isArray(payload.right)) {
+      // 整体替换前回收旧列表的 blob URL，避免重复恢复造成泄漏
+      revokeItemsUrls(leftItems);
+      revokeItemsUrls(rightItems);
       leftItems = payload.left.map(deserializeItem).map(it => { it.dataUrl = dataUrlFromItem(it); return it; });
       rightItems = payload.right.map(deserializeItem).map(it => { it.dataUrl = dataUrlFromItem(it); return it; });
       nextId = (payload.nextId && payload.nextId > 1) ? payload.nextId : 1;
@@ -89,7 +107,7 @@ export function restoreCache() {
 }
 
 export function clearCache() {
-  try { localStorage.removeItem(CACHE_KEY); } catch (e) {}
+  lsDel(CACHE_KEY);
 }
 
 // ---- 添加文件 ----
@@ -138,8 +156,10 @@ export function clearRight() {
   render();
 }
 export function removeItem(id) {
+  const removed = [...leftItems, ...rightItems].filter(i => i.id === id);
   leftItems = leftItems.filter(i => i.id !== id);
   rightItems = rightItems.filter(i => i.id !== id);
+  revokeItemsUrls(removed); // 删除即回收 blob URL
   render();
 }
 export function updateItem(_item) {

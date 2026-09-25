@@ -1,11 +1,11 @@
 // ============================================================================
 // decrypt.js —— 解密 + 多文件网格预览 + 单文件下载 + JSZip 批量 ZIP
 // ============================================================================
-import { $, toast, hideProgress, setProgress, openImageModal, openVideoModal } from './ui.js';
+import { $, toast, hideProgress, setProgress, openImageModal, openVideoModal, buttonProgress, downloadBlob } from './ui.js';
 import { decryptEncodedBytes, decompress, sha256, splitPayload, uint8FromBuffer, importKeyFromB64 } from './crypto.js';
 import { makeKeyResolver, rememberDecryptSuccess, getRememberedDecrypt } from './key.js';
 import { icon } from './icons.js';
-import { addFileToLeft } from './library.js';
+import { addFileToLeft, isImageType, isVideoType } from './library.js';
 
 // ---- 批量载荷解析（继承旧版"多重"格式） ----
 function parseBatchPayload(buf) {
@@ -41,8 +41,8 @@ function parseSinglePayload(buf) {
 }
 
 function extFromMime(mime, fallback) {
-  if (mime.startsWith('image/')) { const e = mime.split('/')[1].replace('jpeg', 'jpg'); return e ? '.' + e : '.img'; }
-  if (mime.startsWith('video/')) { const e = mime.split('/')[1]; return e ? '.' + e : '.mp4'; }
+  if (isImageType(mime)) { const e = mime.split('/')[1].replace('jpeg', 'jpg'); return e ? '.' + e : '.img'; }
+  if (isVideoType(mime)) { const e = mime.split('/')[1]; return e ? '.' + e : '.mp4'; }
   if (mime === 'text/html') return '.html';
   if (mime === 'text/plain') return /\.txt$/i.test(fallback) ? '.txt' : '.' + (fallback.match(/\.[^.]*$/)?.[0] || 'txt');
   const extMatch = fallback.match(/\.[^.]*$/);
@@ -51,8 +51,16 @@ function extFromMime(mime, fallback) {
 
 function arrayEqual(a, b) { return a.length === b.length && a.every((v, i) => v === b[i]); }
 
+// 结果网格预览用 blob URL 统一登记：重新渲染/清空结果前批量回收，避免泄漏
+let previewUrls = [];
+function releasePreviewUrls() {
+  for (const u of previewUrls) URL.revokeObjectURL(u);
+  previewUrls = [];
+}
+
 // ---- 文件网格渲染 ----
 async function renderFileGrid(files, container) {
+  releasePreviewUrls();
   container.innerHTML = '';
   const grid = document.createElement('div');
   grid.className = 'file-grid';
@@ -62,13 +70,14 @@ async function renderFileGrid(files, container) {
     card.className = 'file-card';
     const blob = new Blob([f.dataBuffer], { type: f.mime });
     const url = URL.createObjectURL(blob);
+    previewUrls.push(url);
 
-    if (f.mime.startsWith('image/')) {
+    if (isImageType(f.mime)) {
       const img = document.createElement('img');
       img.src = url;
       img.onclick = () => openImageModal(url);
       card.appendChild(img);
-    } else if (f.mime.startsWith('video/')) {
+    } else if (isVideoType(f.mime)) {
       const vid = document.createElement('video');
       vid.src = url; vid.muted = true; vid.controls = false;
       vid.style.width = '100%'; vid.style.height = '100px'; vid.style.objectFit = 'cover';
@@ -88,7 +97,8 @@ async function renderFileGrid(files, container) {
     btnGroup.style.display = 'flex'; btnGroup.style.gap = '4px'; btnGroup.style.justifyContent = 'center';
     const dl = document.createElement('button');
     dl.innerText = '💾下载'; dl.className = 'btn-sm';
-    dl.onclick = (e) => { e.stopPropagation(); const a = document.createElement('a'); a.href = url; a.download = f.name; a.click(); };
+    // 单文件下载走统一工具：新建 URL 并延迟回收（预览 URL 仍留给缩略图使用）
+    dl.onclick = (e) => { e.stopPropagation(); downloadBlob(f.name, blob); };
     btnGroup.appendChild(dl);
     const add = document.createElement('button');
     add.innerText = '📚+库'; add.className = 'btn-sm';
@@ -117,10 +127,7 @@ async function renderFileGrid(files, container) {
         const zip = new JSZip();
         for (const f of files) zip.file(f.name, f.dataBuffer);
         const zipBlob = await zip.generateAsync({ type: 'blob' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(zipBlob);
-        a.download = `decrypted_files_${Date.now()}.zip`;
-        a.click();
+        downloadBlob(`decrypted_files_${Date.now()}.zip`, zipBlob);
         toast('ZIP 已下载');
       } catch (e) {
         toast('ZIP 打包失败：' + (e.message || e), 'error');
@@ -182,6 +189,7 @@ export function initDecrypt() {
   decryptFile.addEventListener('change', (e) => {
     nameSpan.innerText = e.target.files.length ? e.target.files[0].name : '未选择文件';
     preview.innerHTML = ''; verifyMsg.innerHTML = '';
+    releasePreviewUrls(); // 换文件即回收上一结果的预览 URL
     badge.className = 'status-badge'; badge.innerText = '等待解密';
   });
 
@@ -193,7 +201,7 @@ export function initDecrypt() {
     const btn = $('decryptBtn');
     badge.innerText = '🔍 解密验证...'; badge.className = 'status-badge';
     verifyMsg.innerHTML = ''; preview.innerHTML = ''; preview.style.display = 'none';
-    btn.disabled = true; buttonText(btn, '⏳ 解密中...');
+    btn.disabled = true; buttonProgress(btn, '⏳ 解密中...');
     try {
       const r = await decryptOne({ file: decryptFile.files[0], usePassword, inputStr });
       // 功能4：记忆成功解密的密钥凭据（仅密钥模式，密码模式不落盘）
@@ -202,12 +210,13 @@ export function initDecrypt() {
       verifyMsg.innerHTML = `<span>${r.msg}</span>`;
       preview.style.display = 'block';
       await renderFileGrid(r.files, preview);
-      buttonText(btn, icon('check-circle') + ' 解密完成');
+      buttonProgress(btn, icon('check-circle') + ' 解密完成');
     } catch (err) {
+      releasePreviewUrls(); // 解密失败清空结果区，同步回收预览 URL
       badge.innerHTML = icon('x') + ' 失败'; badge.className = 'status-badge error';
       verifyMsg.innerHTML = `<span>${err.message}</span>`;
       preview.innerHTML = '';
-      buttonText(btn, icon('zoom-in') + ' 解密并校验完整性');
+      buttonProgress(btn, icon('zoom-in') + ' 解密并校验完整性');
       toast(err.message || '解密失败', 'error');
     } finally { btn.disabled = false; }
   };
@@ -222,5 +231,3 @@ export function initDecrypt() {
     }
   }
 }
-
-function buttonText(btn, text) { if (btn) btn.textContent = text; }

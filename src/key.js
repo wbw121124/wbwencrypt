@@ -3,16 +3,15 @@
 // ============================================================================
 import {
   generateRandomKey, exportKeyB64, importKeyFromB64, deriveKeyFromPassword,
-  deriveKeyFromPasswordIter, arrBufToBase64,
+  deriveKeyFromPasswordIter, arrBufToBase64, randomBytes, SALT_LEN,
 } from './crypto.js';
-import { toast } from './ui.js';
+import { toast, lsGet, lsSet as storeSet, lsDel as storeDel } from './ui.js';
 
 const STORE_PREFIX = 'wbwencrypt:key:';
 const META_PREFIX = 'wbwencrypt:meta:';
 const MAX_ENTRIES = 50;
 
-// ---- localStorage 工具（try/catch 防隐私模式报错）----
-function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+// ---- localStorage 工具（读写统一走 ui.js 的 lsGet/lsSet/lsDel，此处只管提示策略）----
 // 本地存储写入/删除失败只提示一次，避免每次操作都刷屏
 let warnedStoreFail = false;
 function warnStoreFailOnce() {
@@ -20,8 +19,8 @@ function warnStoreFailOnce() {
   warnedStoreFail = true;
   toast('本地存储写入失败：浏览器存储空间不足或被禁用，密钥记忆可能不会保存', 'error');
 }
-function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { warnStoreFailOnce(); } }
-function lsDel(k) { try { localStorage.removeItem(k); } catch (e) { warnStoreFailOnce(); } }
+function lsSet(k, v) { if (!storeSet(k, v)) warnStoreFailOnce(); }
+function lsDel(k) { if (!storeDel(k)) warnStoreFailOnce(); }
 
 // ---- 记忆存储键名（按文件内容哈希分键）----
 function hashKey(hashHex) { return STORE_PREFIX + hashHex; }
@@ -76,7 +75,7 @@ export function listStoredRecords() {
 
 export function clearAllKeys() {
   for (const h of getAllStoredHashes()) clearKeyForHash(h);
-  try { lsDel(META_PREFIX + 'list'); } catch (e) {}
+  lsDel(META_PREFIX + 'list');
 }
 
 // ============================================================================
@@ -110,7 +109,7 @@ export function getRememberedDecrypt() {
 export async function getEncryptionKey(customKeyRaw, usePassword, password) {
   if (usePassword) {
     if (!password) throw new Error('请输入密码短语');
-    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const salt = randomBytes(SALT_LEN);
     const key = await deriveKeyFromPassword(password, salt);
     const keyB64 = await exportKeyB64(key);
     return { key, keyB64, type: 'password', saltB64: arrBufToBase64(salt) };

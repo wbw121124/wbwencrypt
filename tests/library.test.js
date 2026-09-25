@@ -52,6 +52,8 @@ globalThis.localStorage = {
 
 // ---- URL.createObjectURL 桩（node 中无法对普通对象取 blob URL）----
 URL.createObjectURL = () => 'blob:mock-url';
+// 回收桩：用于断言「删除/替换条目时确实 revoke 了旧 URL」
+URL.revokeObjectURL = vi.fn();
 
 const CACHE_KEY = 'wbwencrypt:library';
 const lib = await import('../src/library.js');
@@ -188,5 +190,39 @@ describe('library 穿梭逻辑', () => {
     expect(lib.isImageType('video/mp4')).toBe(false);
     expect(lib.isVideoType('video/webm')).toBe(true);
     expect(lib.isVideoType('image/gif')).toBe(false);
+  });
+
+  it('缓存写入成功时保持启用并持续落盘（回归：成功不得被误判为失败）', async () => {
+    await lib.addFileToLeft(fakeFile('缓存A.txt', pattern(16)));
+    expect(store.has(CACHE_KEY)).toBe(true);
+    expect(lib.isCacheEnabled()).toBe(true);
+    // 第二次变更仍应继续写入：写入成功后 cacheEnabled 不得被关掉
+    await lib.addFileToLeft(fakeFile('缓存B.txt', pattern(16)));
+    const payload = JSON.parse(store.get(CACHE_KEY));
+    expect(payload.left.length).toBe(2);
+    expect(lib.isCacheEnabled()).toBe(true);
+  });
+
+  it('删除条目与替换 dataUrl 时回收旧 blob URL', async () => {
+    URL.revokeObjectURL.mockClear();
+    const item = await lib.addFileToLeft(fakeFile('图.png', pattern(16), 'image/png'));
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+    lib.setItemDataUrl(item, new Blob(['新内容'], { type: 'text/plain' }));
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+    URL.revokeObjectURL.mockClear();
+    lib.removeItem(item.id);
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+  });
+
+  // 放在最后执行：本用例会把 cacheEnabled 置为 false，避免影响前面的写入断言
+  it('缓存写入真实失败（setItem 抛异常）时才关闭缓存', async () => {
+    const original = globalThis.localStorage.setItem;
+    globalThis.localStorage.setItem = () => { throw new Error('QuotaExceededError'); };
+    try {
+      await lib.addFileToLeft(fakeFile('写入失败.txt', pattern(8)));
+      expect(lib.isCacheEnabled()).toBe(false);
+    } finally {
+      globalThis.localStorage.setItem = original;
+    }
   });
 });

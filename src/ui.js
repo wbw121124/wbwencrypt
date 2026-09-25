@@ -80,6 +80,32 @@ export function buttonProgress(btn, text) {
   if (btn) btn.textContent = text;
 }
 
+// ---- 本地存储工具（全项目唯一实现，try/catch 防隐私模式/超限报错）----
+// 语义统一：读取失败返回 null，写入/删除成功返回 true、失败返回 false，
+// 调用方据此决定是否降级（如关闭缓存）或给出一次性提示。
+export function lsGet(k) {
+  try { return localStorage.getItem(k); } catch (e) { return null; }
+}
+export function lsSet(k, v) {
+  try { localStorage.setItem(k, v); return true; } catch (e) { return false; }
+}
+export function lsDel(k) {
+  try { localStorage.removeItem(k); return true; } catch (e) { return false; }
+}
+
+// ---- 统一下载：创建 blob URL 触发下载，延迟回收避免 URL 泄漏 ----
+// 立即 revoke 会让部分浏览器取消下载，故延迟 10 秒回收（与原配置导出行为一致）。
+export function downloadBlob(name, blob) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
 // ---- 拖拽高亮辅助 ----
 export function wireDragDrop(zoneId, onFiles) {
   const zone = document.getElementById(zoneId);

@@ -2,8 +2,8 @@
 // main.js —— 入口：装配各模块并接线加密/解密/记忆流程
 // ============================================================================
 import './style.css';
-import { $, toast, wireDismissModal, setProgress, hideProgress, buttonProgress } from './ui.js';
-import { initLibrary, getRightItems, clearRight } from './library.js';
+import { $, toast, wireDismissModal, setProgress, hideProgress, buttonProgress, downloadBlob } from './ui.js';
+import { initLibrary, getRightItems, clearRight, isImageType } from './library.js';
 import { initEditor, openEditorForItem } from './editor.js';
 import { initImageEditor, openImageEditor } from './imageEditor.js';
 import { initCamera } from './camera.js';
@@ -11,7 +11,7 @@ import { initDecrypt } from './decrypt.js';
 import { getEncryptionKey, rememberKeyForHash, getKeyForHash, listStoredRecords, clearKeyForHash, clearAllKeys } from './key.js';
 import { setupConfigPanel } from './settings.js';
 import { injectIcons, icon } from './icons.js';
-import { concatBuffers, sha256, compress, encryptBytes, hexFromBytes } from './crypto.js';
+import { concatBuffers, sha256, compress, encryptBytes, hexFromBytes, base64ToBytes } from './crypto.js';
 
 function buildBatchPayload(files) {
   const enc = new TextEncoder();
@@ -89,7 +89,7 @@ function setup() {
   // 文件库动作钩子
   initLibrary({
     hooks: {
-      editImage: (item) => { if (item.mime.startsWith('image/')) openImageEditor(item); },
+      editImage: (item) => { if (isImageType(item.mime)) openImageEditor(item); },
       editText: (item) => openEditorForItem(item),
     },
   });
@@ -142,7 +142,7 @@ function setup() {
         type: keyInfo.type,
         key: keyInfo.type === 'key' ? keyInfo.key : undefined,
         password: keyInfo.type === 'password' ? password : undefined,
-        salt: keyInfo.saltB64 ? Uint8Array.from(atob(keyInfo.saltB64), c => c.charCodeAt(0)) : undefined,
+        salt: keyInfo.saltB64 ? base64ToBytes(keyInfo.saltB64) : undefined,
       }, {
         onProgress: (pct, i, count) => setProgress('encryptProgress', `🔐 加密分片 ${i}/${count} (${pct}%)`),
       });
@@ -157,15 +157,13 @@ function setup() {
 
       $('usedKeyDisplay').innerText = keyInfo.keyB64;
       $('encryptResultUnified').style.display = 'block';
-      if (window.downloadUrl) URL.revokeObjectURL(window.downloadUrl);
-      window.downloadUrl = URL.createObjectURL(new Blob([buffer]));
       // 功能1：单文件时用原文件名，多文件用批量名
       const downloadName = right.length === 1
         ? right[0].name + '.aes'
         : `encrypted_batch_${Date.now()}.aes`;
-      $('downloadEncryptedBtn').onclick = () => {
-        const a = document.createElement('a'); a.href = window.downloadUrl; a.download = downloadName; a.click();
-      };
+      // 下载交给统一工具：每次点击新建 blob URL 并延迟回收，不再持有全局 window.downloadUrl
+      const encBlob = new Blob([buffer]);
+      $('downloadEncryptedBtn').onclick = () => downloadBlob(downloadName, encBlob);
       $('copyUsedKeyBtn').onclick = async () => {
         try {
           await navigator.clipboard.writeText(keyInfo.keyB64);

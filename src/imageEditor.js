@@ -3,7 +3,7 @@
 // 修复：补充 touch / pointer 事件支持，移动端可标记
 // ============================================================================
 import { $, toast, hideModal, showModal } from './ui.js';
-import { updateItem } from './library.js';
+import { updateItem, setItemDataUrl } from './library.js';
 
 let currentEditItem = null;
 let originalImageBitmap = null;
@@ -165,7 +165,7 @@ export function initImageEditor() {
       const blob = await new Promise(res => $('editedCanvas').toBlob(res, currentEditItem.mime || 'image/png'));
       if (!blob) { toast('保存失败：画布导出为空', 'error'); return; }
       currentEditItem.arrayBuffer = await blob.arrayBuffer();
-      currentEditItem.dataUrl = URL.createObjectURL(blob);
+      setItemDataUrl(currentEditItem, blob); // 替换预览 URL（内部回收旧 URL）
       currentEditItem.mime = blob.type;
       currentEditItem.hashHex = '';
       updateItem(currentEditItem);

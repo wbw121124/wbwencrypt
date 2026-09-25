@@ -64,11 +64,16 @@ export function arrBufToBase64(b) {
   return btoa(s);
 }
 
-export function base64ToArrBuf(s) {
+// Base64 → 字节数组（手写 atob 的唯一实现，调用方不要再各自转换）
+export function base64ToBytes(s) {
   const bin = atob(s);
   const u = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
-  return u.buffer;
+  return u;
+}
+
+export function base64ToArrBuf(s) {
+  return base64ToBytes(s).buffer;
 }
 
 export function randomBytes(n) { return crypto.getRandomValues(new Uint8Array(n)); }

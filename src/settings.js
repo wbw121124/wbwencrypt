@@ -8,20 +8,11 @@ import {
   getAllStoredHashes, getKeyForHash, rememberKeyForHash,
   clearAllKeys, getRememberedDecrypt, rememberDecryptSuccess,
 } from './key.js';
-import { $, toast } from './ui.js';
+import { $, toast, downloadBlob } from './ui.js';
 import Swal from 'sweetalert2';
 
 const CONFIG_TAG = 'wbwencrypt';
 const CONFIG_VERSION = 1;
-
-function downloadText(name, text) {
-  const blob = new Blob([text], { type: 'application/json;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = name;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
-}
 
 // 收集当前界面偏好
 function collectPrefs() {
@@ -49,7 +40,10 @@ export function exportConfig() {
     decryptHistory,
   };
   const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-  downloadText(`wbwencrypt-config-${stamp}.json`, JSON.stringify(config, null, 2));
+  downloadBlob(
+    `wbwencrypt-config-${stamp}.json`,
+    new Blob([JSON.stringify(config, null, 2)], { type: 'application/json;charset=utf-8' }),
+  );
   toast('配置已导出（含记忆密钥，请妥善保管）');
 }
 
