@@ -296,10 +296,9 @@ function explorerDelete() {
     cancelButtonText: '取消',
   }).then(async (res) => {
     if (res.isConfirmed) {
-      const win = window.electronAPI;
-      for (const path of selectedItems) {
+      for (const p of selectedItems) {
         // 实际删除需要更多实现
-        console.log('删除:', path);
+        console.log('删除:', p);
       }
       selectedItems.clear();
       toast('已删除', 'success');
@@ -328,8 +327,7 @@ async function explorerRename() {
   });
 
   if (value && value !== oldName) {
-    const dir = path.replace(/[/\\][^/\\]*$/, '');
-    // newPath 待实现
+    // dir 待使用
     toast('已重命名');
     explorerRefresh();
   }
