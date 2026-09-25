@@ -581,8 +581,60 @@ function updateViewModeUI() {
   if (label) label.innerText = viewNames[currentViewMode];
 }
 
-// ---- 打开本地文件夹（File System Access API）----
+// ---- 打开本地文件夹（支持 Electron 和浏览器）----
 export async function openLocalFolder() {
+  const win = window.electronAPI;
+
+  // Electron 环境：使用原生文件系统 API
+  if (win && win.isElectron) {
+    try {
+      const result = await win.openFolder();
+      if (result.canceled || !result.filePaths.length) return;
+
+      const dirPath = result.filePaths[0];
+      await win.setWorkspace(dirPath);
+
+      // 读取文件夹内容
+      const res = await win.readDir(dirPath);
+      if (!res.success) {
+        toast('读取文件夹失败：' + res.error, 'error');
+        return;
+      }
+
+      // 转换文件条目为 library 格式
+      const files = [];
+      for (const item of res.items) {
+        if (item.isDirectory) {
+          // 递归读取子文件夹
+          const subRes = await win.readDir(item.path);
+          if (subRes.success) {
+            for (const subItem of subRes.items) {
+              if (!subItem.isDirectory) {
+                const file = await readFileFromPath(subItem.path);
+                if (file) files.push(file);
+              }
+            }
+          }
+        } else {
+          const file = await readFileFromPath(item.path);
+          if (file) files.push(file);
+        }
+      }
+
+      if (files.length === 0) {
+        toast('文件夹中没有可添加的文件', 'warning');
+        return;
+      }
+
+      await addFilesToLeft(files);
+      toast(`已从「${path.basename(dirPath)}」添加 ${files.length} 个文件`, 'success');
+    } catch (e) {
+      toast('打开文件夹失败：' + (e && e.message ? e.message : '未知错误'), 'error');
+    }
+    return;
+  }
+
+  // 浏览器环境：使用 webkitGetAsEntry
   if (!window.showDirectoryPicker) {
     toast('当前浏览器不支持文件夹访问，请使用 Chrome/Edge', 'error');
     return;
@@ -600,6 +652,46 @@ export async function openLocalFolder() {
     }
   }
 }
+
+// 从路径读取文件（Electron 环境）
+async function readFileFromPath(filePath) {
+  try {
+    const win = window.electronAPI;
+    const res = await win.readFile(filePath);
+    if (!res.success) return null;
+
+    const ext = path.extname(filePath).toLowerCase();
+    const mimeMap = {
+      '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
+      '.gif': 'image/gif', '.bmp': 'image/bmp', '.webp': 'image/webp',
+      '.mp4': 'video/mp4', '.webm': 'video/webm', '.avi': 'video/x-msvideo',
+      '.html': 'text/html', '.htm': 'text/html', '.txt': 'text/plain',
+      '.json': 'application/json', '.xml': 'text/xml',
+    };
+
+    return {
+      id: nextId++,
+      name: path.basename(filePath),
+      mime: mimeMap[ext] || 'application/octet-stream',
+      dataUrl: null,
+      arrayBuffer: res.isBinary ? Uint8Array.from(atob(res.content), c => c.charCodeAt(0)).buffer : new TextEncoder().encode(res.content).buffer,
+      hashHex: '',
+      filePath: filePath,
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+// 路径工具（兼容 Node.js 和浏览器）
+const path = {
+  basename: (p) => p.split(/[/\\]/).pop(),
+  extname: (p) => {
+    const idx = p.lastIndexOf('.');
+    return idx >= 0 ? p.slice(idx).toLowerCase() : '';
+  },
+  dirname: (p) => p.split(/[/\\]/).slice(0, -1).join('/'),
+};
 
 async function readDirectoryHandle(dirHandle, path = '') {
   const files = [];

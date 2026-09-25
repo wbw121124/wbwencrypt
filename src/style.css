@@ -1,4 +1,9 @@
 *{box-sizing:border-box;font-family:'Segoe UI',system-ui,'PingFang SC','Microsoft YaHei',sans-serif;}
+/* ===== 自动 color-scheme（影响原生滚动条、表单控件等） ===== */
+:root { color-scheme: dark; }
+[data-theme="light"] { color-scheme: light; }
+[data-theme="auto"] { color-scheme: dark light; }
+
 /* ===== VS Code Dark+ 配色 ===== */
 :root{
   /* 基础色 */
