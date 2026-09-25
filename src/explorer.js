@@ -223,7 +223,7 @@ function syncExplorerData() {
 
   content.innerHTML = '';
 
-  // 只显示左侧列表（文件库）
+  // 显示所有项目（包括文件夹和文件）
   for (const item of leftItems) {
     const el = document.createElement('div');
     el.className = 'explorer-item';
@@ -233,7 +233,7 @@ function syncExplorerData() {
     const iconEl = document.createElement('div');
     iconEl.className = 'explorer-item-icon';
     if (item.isFolder) {
-      iconEl.innerHTML = icon('folder', 32);
+      iconEl.innerHTML = icon('folder-open', 32);
       iconEl.style.color = 'var(--code-blue)';
     } else {
       const ext = item.filePath?.split('.').pop()?.toLowerCase() || '';
@@ -253,9 +253,32 @@ function syncExplorerData() {
     el.appendChild(iconEl);
     el.appendChild(nameEl);
 
-    // 双击添加到待加密列表
+    // 点击选中
+    el.onclick = (e) => {
+      if (e.ctrlKey) {
+        if (selectedItems.has(item.id)) {
+          selectedItems.delete(item.id);
+        } else {
+          selectedItems.add(item.id);
+        }
+        renderExplorerSelection();
+      } else if (e.shiftKey) {
+        selectedItems.add(item.id);
+        renderExplorerSelection();
+      } else {
+        selectedItems.clear();
+        selectedItems.add(item.id);
+        renderExplorerSelection();
+      }
+    };
+
+    // 双击
     el.ondblclick = () => {
-      if (!item.isFolder) {
+      if (item.isFolder) {
+        // 文件夹：展开/折叠（简化：暂时只显示提示）
+        toast(`已选中文件夹「${item.name}」`);
+      } else {
+        // 文件：添加到待加密列表
         libraryModule.moveToRight(item.id);
         toast(`已添加「${item.name}」到待加密列表`);
       }
@@ -263,13 +286,40 @@ function syncExplorerData() {
 
     content.appendChild(el);
   }
+
+  // 更新面包屑
+  updateBreadcrumb(leftItems);
+}
+
+function updateBreadcrumb(items) {
+  const breadcrumb = $('explorerBreadcrumb');
+  if (!breadcrumb) return;
+
+  const folders = items.filter(i => i.isFolder);
+  const files = items.filter(i => !i.isFolder);
+
+  if (folders.length === 0 && files.length === 0) {
+    breadcrumb.innerHTML = icon('folder-open', 14) + ' 空文件夹';
+  } else {
+    const parts = [];
+    parts.push(icon('home', 14) + ' 文件库');
+    if (folders.length > 0) {
+      parts.push(`${folders.length} 个文件夹`);
+    }
+    if (files.length > 0) {
+      parts.push(`${files.length} 个文件`);
+    }
+    breadcrumb.innerHTML = parts.join(' <span style="color:var(--text-sec);margin:0 4px;">/</span> ');
+  }
 }
 
 // 导航操作
 function explorerBack() {}
 function explorerForward() {}
 function explorerUp() {}
-function explorerRefresh() { syncExplorerData(); }
+function explorerRefresh() {
+  syncExplorerData();
+}
 async function explorerNewFolder() {
   const { value } = await Swal.fire({
     title: '新建文件夹',

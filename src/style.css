@@ -136,6 +136,8 @@ input[type="file"].visually-hidden{position:absolute;width:1px;height:1px;paddin
 .explorer-toolbar button:hover:not(:disabled){background:var(--selection-soft);}
 .explorer-toolbar button:disabled{opacity:0.5;cursor:not-allowed;}
 .explorer-path{flex:1;padding:4px 8px;background:var(--bg-editor);border:1px solid var(--border);border-radius:4px;font-size:0.8rem;color:var(--text);margin:0 8px;}
+.explorer-breadcrumb{flex:1;padding:4px 12px;background:var(--bg-editor);border:1px solid var(--border);border-radius:4px;font-size:0.8rem;color:var(--text);margin:0 8px;display:flex;align-items:center;gap:4px;overflow:hidden;white-space:nowrap;}
+.explorer-breadcrumb .breadcrumb-sep{color:var(--text-sec);margin:0 4px;flex-shrink:0;}
 .explorer-body{display:flex;flex:1;overflow:hidden;}
 .explorer-sidebar{width:180px;border-right:1px solid var(--border);overflow-y:auto;background:var(--bg-side);}
 .sidebar-header{padding:8px;font-size:0.75rem;color:var(--text-sec);border-bottom:1px solid var(--border);}
