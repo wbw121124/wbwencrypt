@@ -95,9 +95,15 @@ export function hideProgress(elId) {
   if (el) el.style.display = 'none';
 }
 
-// 内联文本进度（用于按钮内）——非进度条，仅更新文案
+// 内联文本进度（用于按钮内）——支持 HTML（含图标）或纯文本
 export function buttonProgress(btn, text) {
-  if (btn) btn.textContent = text;
+  if (!btn) return;
+  // 如果文本包含 < 则视为 HTML（含图标），否则作为纯文本
+  if (text && typeof text === 'string' && text.includes('<')) {
+    btn.innerHTML = text;
+  } else {
+    btn.textContent = text;
+  }
 }
 
 // ---- 本地存储工具（全项目唯一实现，try/catch 防隐私模式/超限报错）----
