@@ -67,6 +67,23 @@ export default [
     },
   },
 
+  // Service Worker（public/sw.js）专用全局
+  {
+    files: ['public/sw.js'],
+    languageOptions: {
+      globals: {
+        self: 'readonly',
+        caches: 'readonly',
+        fetch: 'readonly',
+        EventSource: 'readonly',
+      },
+    },
+    rules: {
+      'no-undef': 'off',
+      'no-unused-vars': 'off',
+    },
+  },
+
   // 关闭与 Prettier 冲突的格式类规则
   prettier,
 ];
