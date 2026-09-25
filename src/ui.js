@@ -24,9 +24,9 @@ export function toast(message, type = 'info', duration = 2600) {
 export function showModal(id) { const m = document.getElementById(id); if (m) m.style.display = 'flex'; }
 export function hideModal(id) { const m = document.getElementById(id); if (m) m.style.display = 'none'; }
 
-// 焦点管理
+// 焦点管理（预留，用于后续弹窗焦点陷阱）
 let lastFocusedElement = null;
-function trapFocus(modal) {
+function _trapFocus(modal) {
   lastFocusedElement = document.activeElement;
   const focusable = modal.querySelectorAll('button, input, textarea, [tabindex]:not([tabindex="-1"])');
   if (focusable.length) focusable[0].focus();
