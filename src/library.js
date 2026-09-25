@@ -135,6 +135,42 @@ export function addFilesToLeft(files) {
   return Promise.all(Array.from(files).map(f => addFileToLeft(f)));
 }
 
+// ---- 文件夹拖拽支持（webkitGetAsEntry）----
+export async function addFolderToLib(directoryEntry) {
+  const files = await readDirectoryEntries(directoryEntry);
+  if (files.length === 0) return [];
+  toast(`正在添加文件夹「${directoryEntry.name}」...`, 'info', 2000);
+  const results = await addFilesToLeft(files);
+  toast(`已添加 ${results.length} 个文件`, 'success');
+  return results;
+}
+
+async function readDirectoryEntries(dirEntry) {
+  const files = [];
+  const reader = dirEntry.createReader();
+  // 递归读取所有子目录
+  const readEntries = () => new Promise((resolve) => {
+    reader.readEntries((entries) => {
+      if (entries.length === 0) { resolve(); return; }
+      resolve(entries);
+    });
+  });
+  let entries = await readEntries();
+  while (entries.length > 0) {
+    const promises = entries.map(entry => {
+      if (entry.isFile) {
+        return new Promise(resolve => entry.file(file => resolve(file)));
+      } else if (entry.isDirectory) {
+        return readDirectoryEntries(entry).then(fs => fs);
+      }
+    });
+    const results = await Promise.all(promises);
+    results.forEach(r => { if (Array.isArray(r)) files.push(...r); else if (r) files.push(r); });
+    entries = await readEntries();
+  }
+  return files;
+}
+
 // ---- 穿梭 ----
 export function getLeftItems() { return leftItems; }
 export function getRightItems() { return rightItems; }
@@ -275,7 +311,21 @@ export function initLibrary({ hooks }) {
   $('toRightBtn').onclick = () => { if (leftItems.length) moveToRight(leftItems[0].id); };
   $('toLeftBtn').onclick = () => { if (rightItems.length) moveToLeft(rightItems[0].id); };
   $('toAllRightBtn').onclick = moveAllRight;
-  wireDragDrop('dropZone', (files) => {
+  wireDragDrop('dropZone', async (items) => {
+    // items 可能是 File 数组（普通文件）或 DirectoryEntry（文件夹）
+    let files = [];
+    if (items && typeof items.name === 'string' && items.isDirectory !== undefined) {
+      // 是 DirectoryEntry
+      try {
+        files = await readDirectoryEntries(items);
+      } catch (e) {
+        toast('读取文件夹失败：' + (e && e.message ? e.message : '未知错误'), 'error');
+        return;
+      }
+    } else {
+      files = Array.from(items);
+    }
+    if (files.length === 0) return;
     addFilesToLeft(files)
       .then(() => toast(`已添加 ${files.length} 个文件`))
       .catch((err) => toast('添加文件失败：' + (err && err.message ? err.message : '未知错误'), 'error'));

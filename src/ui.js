@@ -132,8 +132,8 @@ export function downloadBlob(name, blob) {
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
-// ---- 拖拽高亮辅助 ----
-export function wireDragDrop(zoneId, onFiles) {
+// ---- 拖拽高亮辅助（支持文件夹：webkitGetAsEntry）----
+export function wireDragDrop(zoneId, onFiles, options = {}) {
   const zone = document.getElementById(zoneId);
   if (!zone) return;
   const hint = zone.querySelector('#dropHint');
@@ -141,10 +141,32 @@ export function wireDragDrop(zoneId, onFiles) {
   zone.addEventListener('dragenter', (e) => { e.preventDefault(); dragDepth++; zone.classList.add('drag-over'); if (hint) hint.style.display = 'block'; });
   zone.addEventListener('dragover', (e) => { e.preventDefault(); });
   zone.addEventListener('dragleave', (e) => { e.preventDefault(); dragDepth--; if (dragDepth <= 0) { dragDepth = 0; zone.classList.remove('drag-over'); if (hint) hint.style.display = 'none'; } });
-  zone.addEventListener('drop', (e) => {
+  zone.addEventListener('drop', async (e) => {
     e.preventDefault();
     dragDepth = 0; zone.classList.remove('drag-over'); if (hint) hint.style.display = 'none';
-    const files = Array.from(e.dataTransfer.files || []);
-    if (files.length) onFiles(files);
+    const items = Array.from(e.dataTransfer.items || []);
+    const filesPromises = [];
+    for (const item of items) {
+      // 尝试文件夹读取（webkitGetAsEntry）
+      if (item.webkitGetAsEntry) {
+        const entry = item.webkitGetAsEntry();
+        if (entry) {
+          if (entry.isDirectory) {
+            filesPromises.push(onFiles(entry)); // 传入目录 entry，调用方递归处理
+            continue;
+          } else if (entry.isFile) {
+            filesPromises.push(new Promise(resolve => entry.file(f => resolve([f]))));
+            continue;
+          }
+        }
+      }
+      // 普通文件
+      if (item.kind === 'file') {
+        const file = item.getAsFile();
+        if (file) filesPromises.push([file]);
+      }
+    }
+    const allFiles = (await Promise.all(filesPromises)).flat();
+    if (allFiles.length) onFiles(allFiles);
   });
 }
