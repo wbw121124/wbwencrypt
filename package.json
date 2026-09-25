@@ -3,7 +3,7 @@
   "version": "2.0.0",
   "description": "AES-GCM 文件加密箱 · Vite 模块化版（多文件下载/预览 + 深色专业主题）",
   "type": "module",
-  "main": "electron/main.js",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
