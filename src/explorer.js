@@ -3,15 +3,15 @@
 // ============================================================================
 import { $, toast } from './ui.js';
 import { icon } from './icons.js';
-import { leftItems, render as libraryRender, nextId as libraryNextId } from './library.js';
 import Swal from 'sweetalert2';
+import * as libraryModule from './library.js';
 
 let explorerView = 'classic'; // 'classic' | 'explorer'
 let currentPath = '';
 let history = [];
 let historyIndex = -1;
 let selectedItems = new Set();
-let nextId = libraryNextId;
+let nextId = 1; // 独立计数器
 
 // 初始化
 export function initExplorer() {
@@ -417,7 +417,7 @@ async function addToLibrary(filePath) {
   };
 
   leftItems.push(item);
-  libraryRender();
+  libraryModule.render();
   toast(`已添加「${item.name}」到文件库`);
 }
 
